@@ -13,3 +13,31 @@ body {
   background-color: #050505;
   color: #fafafa;
 }
+
+.chat-streaming > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 0.95em;
+  margin-left: 3px;
+  border-radius: 1px;
+  vertical-align: -0.12em;
+  background: rgba(212, 212, 216, 0.85);
+  animation: chat-caret 1.1s ease-in-out infinite;
+}
+
+@keyframes chat-caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-streaming > :last-child::after {
+    animation: none;
+  }
+}

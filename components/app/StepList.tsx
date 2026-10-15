@@ -94,7 +94,13 @@ function StepContent({ step, active }: { step: JourneyStep; active: boolean }) {
   );
 }
 
-export default function StepList({ steps }: { steps: JourneyStep[] }) {
+export default function StepList({
+  steps,
+  demo = false,
+}: {
+  steps: JourneyStep[];
+  demo?: boolean;
+}) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion() ?? false;
   const navRef = useRef<HTMLElement | null>(null);
@@ -137,6 +143,7 @@ export default function StepList({ steps }: { steps: JourneyStep[] }) {
       <nav
         ref={navRef}
         aria-label="Menu langkah"
+        aria-hidden={demo || undefined}
         className="relative mt-8 hidden flex-col gap-1 md:flex"
       >
         <span
@@ -175,7 +182,7 @@ export default function StepList({ steps }: { steps: JourneyStep[] }) {
             />
           ) : null;
 
-          if (unlocked && href) {
+          if (unlocked && href && !demo) {
             return (
               <Link
                 key={step.n}
@@ -190,7 +197,11 @@ export default function StepList({ steps }: { steps: JourneyStep[] }) {
           }
 
           return (
-            <span key={step.n} aria-disabled="true" className={rowClass}>
+            <span
+              key={step.n}
+              aria-disabled={demo ? undefined : "true"}
+              className={rowClass}
+            >
               {sweep}
               <StepContent step={step} active={isActive} />
             </span>
@@ -208,7 +219,11 @@ export default function StepList({ steps }: { steps: JourneyStep[] }) {
         )}
       </nav>
 
-      <nav aria-label="Menu langkah" className="mt-4 flex items-center gap-1.5 md:hidden">
+      <nav
+        aria-label="Menu langkah"
+        aria-hidden={demo || undefined}
+        className="mt-4 flex items-center gap-1.5 md:hidden"
+      >
         {steps.map((step, i) => {
           const href = STEP_HREFS[step.n];
           const unlocked =
@@ -240,7 +255,7 @@ export default function StepList({ steps }: { steps: JourneyStep[] }) {
 
           return (
             <span key={step.n} className="flex flex-1 items-center gap-1.5">
-              {unlocked && href ? (
+              {unlocked && href && !demo ? (
                 <Link
                   href={href}
                   aria-current={routeActive?.n === step.n ? "page" : undefined}
@@ -251,9 +266,15 @@ export default function StepList({ steps }: { steps: JourneyStep[] }) {
                 </Link>
               ) : (
                 <span
-                  aria-disabled="true"
-                  aria-label={step.title}
-                  className={isActive ? activeWrap : `${inactiveChip} opacity-60`}
+                  aria-disabled={demo ? undefined : "true"}
+                  aria-label={demo ? undefined : step.title}
+                  className={
+                    isActive
+                      ? activeWrap
+                      : unlocked
+                        ? inactiveChip
+                        : `${inactiveChip} opacity-60`
+                  }
                 >
                   {chip}
                 </span>

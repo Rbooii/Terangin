@@ -13,7 +13,6 @@ import {
 } from "@/db/schema";
 import AppShell from "@/components/app/AppShell";
 import ChatPanel from "@/components/chat/ChatPanel";
-import { TeraMark } from "@/components/landing/TeraMark";
 import { rowToUIMessage } from "@/lib/chat/messages";
 import { getJourneySteps, getUserProfile } from "@/lib/onboarding";
 
@@ -93,18 +92,7 @@ export default async function ChatPage() {
 
   return (
     <AppShell user={{ name: profile.fullName }} steps={steps}>
-      <div className="flex items-center gap-3">
-        <TeraMark className="size-8" />
-        <div>
-          <h1 className="text-[15px] font-medium text-white">Tera</h1>
-          <p className="text-[11px] text-zinc-500">
-            Konselor jurusanmu, jawab pakai data profilmu
-          </p>
-        </div>
-      </div>
-      <div className="mt-5">
-        <ChatPanel initialMessages={initialMessages} suggestions={suggestions} />
-      </div>
+      <ChatPanel initialMessages={initialMessages} suggestions={suggestions} />
     </AppShell>
   );
 }

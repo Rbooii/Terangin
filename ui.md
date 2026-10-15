@@ -126,7 +126,7 @@ cursor-not-allowed rounded-full border border-white/8 px-3.5 py-1.5 text-[12px] 
 **Progress tahap (analisis):** lingkaran `size-6 rounded-full` — done `bg-emerald-400/15 text-emerald-300` + CheckIcon, aktif `border border-white/30` + dot berdenyut, pending `border border-white/10`.
 
 ### 3.6 Ikon (hanya dari `components/landing/icons.tsx`)
-`ArrowRight`, `ArrowDown`, `ArrowUp`, `ChevronDown`, `SendIcon`, `SparkleIcon`, `TrashIcon`, `CheckIcon` — semua stroke SVG 1.3–1.5, `currentColor`. **Jangan tambah ikon dekoratif/emoji.** Kalau butuh ikon baru, buat SVG stroke minimalis dengan pola yang sama.
+`ArrowRight`, `ArrowDown`, `ArrowUp`, `ChevronDown`, `SendIcon`, `SparkleIcon`, `TrashIcon`, `CheckIcon`, `CopyIcon` — semua stroke SVG 1.3–1.5, `currentColor`. **Jangan tambah ikon dekoratif/emoji.** Kalau butuh ikon baru, buat SVG stroke minimalis dengan pola yang sama.
 
 ---
 
@@ -162,9 +162,9 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 ### 6.1 Landing `/` (publik, 9 section berurutan)
 1. **Navbar** sticky: logo "Terang.in" (`.in` zinc-500), menu Products (dropdown) + Pricing; kanan: AuthNav (login/guest state, dibungkus Suspense).
 2. **Hero:** "Meet ⊙ Tera" (TeraMark inline di antara kata), tagline 2 baris, tombol "Try it Now ↓" (primary) + "Ask Us ↑" (secondary).
-3. **ProductPreview** (`#preview`): mockup browser 2 kolom — sidebar stepper (1 Onboarding Done, 2 Assessment Bakat Done, 3 Input Nilai aktif, 4 Hasil Analisis) + panel chat statis (bubble AI abu, bubble user putih, input "Pesan Tera" + tombol kirim).
+3. **ProductPreview** (`#preview`): mockup browser 2 kolom yang **mereplikasi UI app asli** — kiri: logo + `StepList` asli dengan prop `demo` (sweep outline, garis progress + knob, kotak opak) + kartu "Chat sama Tera" (state terkunci redup → aktif "Lagi ngobrol") + chip user (avatar putih inisial + "Siswa SMA"); kanan: `ChatDemo` scripted (header app dengan TeraMark size-8 + subteks + ikon reset visual, AI = avatar + teks tanpa bubble, user = bubble putih, input `rounded-2xl bg-[#161616]` + tombol ArrowUp, disclaimer). **Sequence animasi sekali saat masuk viewport** (tanpa AI call): step 3 aktif (t≈0,9 dtk) → advance ke step 4 (garis + knob + sweep beranimasi), chat unlock (t≈1,7 dtk) → typing dots → AI mengetik dengan caret → copy "Salin" muncul → bubble user → AI kedua streaming → settle (sweep step 4 terus berputar sebagai mikro-loop).
 4. **Testimonial:** band `rounded-3xl bg-[#161616]` dengan judul "Ngobrol sama Tera kayak ngobrol sama Teman" + kutipan + lingkaran smiley putih besar (mata melengkung) bleed keluar kartu kanan atas.
-5. **Features** (`#fitur`): judul "Terang.in Mudah Dipakai" + grid 2×2 kartu (Kenalan dulu, Jawab asesmen tanpa dihakimi, Lihat hasil analisismu, Ngobrol sama Tera) masing-masing dengan mini-mockup (form skeleton, bar chart, kartu hasil, pill "Asking Research...").
+5. **Features** (`#fitur`): judul "Terang.in Mudah Dipakai" + grid 2×2 kartu (Kenalan dulu, Jawab asesmen tanpa dihakimi, Lihat hasil analisismu, Ngobrol sama Tera) dengan mini-mockup yang **meniru UI app asli + animasi scripted sekali saat in-view** (semua di `components/landing/feature-mocks.tsx`, tanpa AI call): form onboarding (input + select Kelas + chip minat `INTEREST_OPTIONS` yang terpilih berurutan + counter "n/5 dipilih" + tombol Lanjut), quiz (chip "Minat", counter "7/24 terjawab" → "8/24", progress bar, timer badge countdown 15→5 dengan state amber ≤5 dtk, teks soal asli dari seed, 5 tombol Likert dengan satu opsi terpilih), hasil analisis dark-theme (badge rank + match% count-up 92/88 + bar + baris kampus/UKT + disclaimer), dan mini chat (bubble user + typing dots zinc + jawaban AI streaming dengan caret). Spinner "Asking Research..." dan dot warna-warni dihapus (melanggar aturan warna dekoratif).
 6. **Pricing** (`#pricing`): kartu "Terang.in / Rp 15k /Sesi / Billed Per Session / Get Terang.in" + teks "Terang.in Hanya NgeCharge Kamu Sekali Per Konsultasi".
 7. **Wordmark:** "TERANG.IN" raksasa full-width via SVG `textLength` + gradien putih→gelap.
 8. **CookieBanner:** fixed kanan bawah, teks English (sesuai desain), tombol Cookies Settings / Reject All / Accept All Cookies (persist localStorage via `useSyncExternalStore`).
@@ -202,10 +202,13 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 - **Hasil:** baris tanggal "Dianalisis {tanggal}" + "Analisis ulang" (outline) → kartu kepribadian (TeraMark size-12 + label + tipe besar + alignment note dalam kotak `bg-black/20`) → kartu "Ringkasan potensimu" (paragraf) → kartu "Kekuatanmu" (list sparkle violet + grid 4 stat kategori dengan bar + chip mapel terkuat) → kartu "Rekomendasi jurusan" (5 sub-kartu: rank badge, nama, match% + bar, alasan, daftar kampus dengan daya tampung/UKT) + disclaimer → footer note.
 
 ### 6.8 Chat `/chat`
-- Header kecil: TeraMark size-8 + "Tera" + "Konselor jurusanmu, jawab pakai data profilmu".
-- **Empty state:** TeraMark size-16 spring-in + "Halo, aku Tera" + subteks + 3 kartu saran pertanyaan (fade-in stagger 0.08s).
-- **Percakapan:** user = bubble putih `rounded-2xl rounded-tr-md` rata kanan; AI = TeraMark size-7 + teks markdown (bold/list rapi, tanpa bubble); animasi fade/slide 0.22s; typing dots saat menunggu token; error = bar merah + "Coba lagi".
-- **Input sticky bawah:** container `rounded-2xl border border-white/10 bg-[#161616] p-2 pl-4` + textarea "Pesan Tera" + tombol bulat putih ArrowUp (atau kotak stop saat streaming) + disclaimer mikro "Tera bisa keliru. Cek info resmi kampus sebelum memutuskan ya." Background `bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent`.
+- **Header sticky:** `sticky top-0 z-20 -mx-5 mb-5 flex items-center gap-3 border-b border-white/6 bg-[#050505]/85 px-5 py-3 backdrop-blur md:-mx-10 md:px-10` — TeraMark size-8 + "Tera" + subteks "Konselor jurusanmu, jawab pakai data profilmu"; kanan: kontrol **reset chat**.
+- **Reset chat (inline dua langkah):** idle = ghost icon button `size-8 rounded-full text-zinc-500 hover:bg-white/5 hover:text-white` + TrashIcon (`aria-label="Hapus semua obrolan"`); klik → morph ke pill konfirmasi `border-red-400/25 bg-red-400/5` berisi "Hapus semua obrolan?" + tombol "Hapus" (`text-red-200 hover:bg-red-400/15`) + "Batal"; auto-dismiss 5 dtk; gagal → teks "Gagal. Coba lagi?" (hilang 3 dtk). Konfirmasi memanggil `resetChatAction` (hapus `chat_sessions`, cascade ke `chat_messages`), `stop()` dulu kalau sedang streaming, lalu `clearError()` + `setMessages([])`.
+- **Empty state:** TeraMark size-16 spring-in + bob halus (y ±4, 4 dtk) + "Halo, aku Tera" + subteks + 3 kartu saran pertanyaan (fade-in stagger 0.08s).
+- **Percakapan:** user = bubble putih `rounded-2xl rounded-tr-md` rata kanan; AI = TeraMark size-7 + teks markdown (bold/list/blockquote/tabel rapi dengan overflow-x-auto, tanpa bubble); animasi fade/slide 0.22s (exit y -4 saat reset); typing dots saat menunggu token; **streaming caret** 2px berkedip di ujung blok terakhir (`chat-streaming`, CSS di globals.css, nonaktif saat reduced motion); error = bar merah + "Coba lagi".
+- **Aksi salin:** di bawah pesan AI, `pl-10`, tombol h-7 pill "Salin" dengan CopyIcon → CheckIcon + "Tersalin" (reset 1.6 dtk); terlihat selalu di mobile, `md:opacity-0` lalu reveal saat hover/focus dalam (`group`); disembunyikan saat pesan itu sedang streaming.
+- **Smart auto-scroll:** scroll listener pada scroll container terdekat (kolom `md:overflow-y-auto` di desktop, window di mobile; deteksi via `getScrollParent`) dengan threshold jarak 140px dari bawah — auto-scroll hanya saat user dekat bawah; kirim pesan sendiri selalu ke bawah; scroll target adalah `scrollHeight` container (bukan `scrollIntoView`, agar konten terakhir tidak tertutup sticky footer input); load awal & streaming pakai `behavior: "instant"`, idle `"smooth"`. **Tombol "ke pesan terbaru":** pill bulat `size-8` ChevronDown floating `absolute -top-11 left-1/2` di atas input, spring in/out, `aria-label="Ke pesan terbaru"`, tampil hanya saat `!atBottom`.
+- **Input sticky bawah:** container `rounded-2xl border border-white/10 bg-[#161616] p-2 pl-4 focus-within:border-white/25 focus-within:shadow-[0_0_0_4px_rgba(255,255,255,0.04)]` + textarea "Pesan Tera" (auto-grow, `transition-[height] duration-150`) + tombol bulat putih ArrowUp / kotak stop (`whileTap scale 0.92`) + disclaimer mikro "Tera bisa keliru. Cek info resmi kampus sebelum memutuskan ya." Background `bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent`.
 
 ### 6.9 Profil `/profil`
 - Form kartu: Nama lengkap, Email (disabled), Asal sekolah, Kelas, Minat awal (chip maks 5) + tombol "Simpan" + indikator "Tersimpan".
@@ -224,9 +227,16 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 | Sweep outline StepList | conic-gradient putih berotasi 360deg, 4.5s linear (mobile 5.5s), fade masuk 0.35s; statis tanpa rotasi saat reduced motion |
 | Progress line StepList | fill height + knob `top` (px dari track terukur) 0.55s ease `[0.21,0.47,0.32,0.98]`; entrance fill dari 0%, knob fade + scale 0.5; knob di depan baris (`z-10`) pada tepi atas kartu aktif |
 | Segmen mobile StepList | fill width 0→100%, 0.45s ease `[0.21,0.47,0.32,0.98]` |
+| Sequence demo landing | sekali saat in-view (IntersectionObserver `once`, margin -100px; ProductPreview), tanpa AI: step advance t≈0,9 dtk → chat start t≈1,7 dtk → typing dots (0,9 dtk) → streaming 2 karakter/24ms → pause → bubble user → dots → streaming kedua; settle dengan sweep terus berputar |
+| Mock fitur landing | sequence sekali in-view (`useInView` once): chip minat terpilih 350/700/1050ms, timer quiz countdown 15→5 (tick 0,5 dtk, amber ≤5), match% count-up 26ms, reply chat streaming 2 karakter/24ms |
+| Reduced motion landing demo | langsung tampil state akhir (advance step, chat penuh, bars/value final) tanpa sequence; caret & loop dimatikan |
 | Avatar melayang (tur) | y `[0,-6,0]` duration 3.2 repeat |
 | Typing dots | opacity `[0.3,1,0.3]` duration 1.2, delay bertingkat |
-| Auto-scroll chat | `scrollIntoView` smooth (idle) / auto (streaming) agar tetap menempel bawah |
+| Auto-scroll chat | hanya saat dekat bawah (scroll listener pada scroll container, threshold 140px); pesan sendiri selalu ke bawah; scroll ke `scrollHeight` container; `instant` saat load/streaming, `smooth` saat idle |
+| Tombol ke pesan terbaru | spring `stiffness 300 damping 26` in/out; tampil saat sentinel bawah tidak terlihat |
+| Streaming caret chat | `.chat-streaming > :last-child::after` 2px, blink 1.1s ease-in-out; statis saat reduced motion |
+| Aksi salin pesan | reveal hover/focus (`md:opacity-0` lalu `group-hover/focus-within:opacity-100`), feedback "Tersalin" 1.6 dtk |
+| Reset chat | morph idle↔konfirmasi AnimatePresence 0.18s; pesan exit y -4 0.22s; empty state spring masuk |
 | Autosave indicator | "Menyimpan..." → "Tersimpan" → hilang 2,2 dtk |
 | Notice (waktu habis) | amber, hilang setelah 3 dtk |
 | Reduced motion | `useReducedMotion` → tanpa fade/slide/blink; sweep StepList tampil statis tanpa rotasi, fill/knob langsung pindah tanpa transisi |
