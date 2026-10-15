@@ -221,15 +221,19 @@ terangin/
 ├── components/
 │   ├── landing/                # Komponen landing + primitif bersama
 │   │   ├── TeraMark.tsx        # Avatar (tracking cursor + blink + reduced motion) — dipakai di SELURUH app
-│   │   ├── icons.tsx           # 8 ikon SVG stroke (ArrowRight/Down/Up, ChevronDown, Send, Sparkle, Trash, Check)
+│   │   ├── icons.tsx           # 9 ikon SVG stroke (ArrowRight/Down/Up, ChevronDown, Send, Sparkle, Trash, Check, Copy)
 │   │   ├── FadeIn.tsx          # Wrapper motion whileInView (landing)
 │   │   ├── Navbar.tsx          # Navbar + dropdown Products + slot authSlot
 │   │   ├── AuthNav.tsx         # Server: auth() → AuthButtons | chip user + Keluar; ada connection()
-│   │   ├── Hero.tsx / ProductPreview.tsx / Testimonial.tsx / Features.tsx / Pricing.tsx / Wordmark.tsx
+│   │   ├── Hero.tsx / Testimonial.tsx / Pricing.tsx / Wordmark.tsx
+│   │   ├── ProductPreview.tsx  # Mockup #preview: replika AppShell (StepList demo + ChatDemo) + sequence animasi scripted
+│   │   ├── ChatDemo.tsx        # Chat scripted tanpa AI (dots → streaming + caret → copy), mirror visual ChatPanel
+│   │   ├── Features.tsx        # Grid 2x2 kartu fitur (wrapper FeatureCard + FadeIn)
+│   │   ├── feature-mocks.tsx   # 4 mini-mock app (onboarding, quiz, hasil analisis, chat) dengan sequence in-view
 │   │   └── CookieBanner.tsx    # Consent localStorage via useSyncExternalStore
 │   ├── app/
 │   │   ├── AppShell.tsx        # Shell: sidebar (logo/StepList/ChatMenuCard/user/Keluar) + mobile header + ChatFab
-│   │   ├── StepList.tsx        # Menu 4 langkah (client, usePathname, locked=non-link, 2 varian responsif)
+│   │   ├── StepList.tsx        # Menu 4 langkah (client, usePathname, locked=non-link, prop `demo` untuk landing, 2 varian responsif)
 │   │   ├── ChatMenuCard.tsx    # Kartu chat di sidebar (locked/unlocked/active)
 │   │   └── ChatFab.tsx         # FAB mobile (spring, hidden di /chat & saat locked)
 │   ├── auth/LoginForm.tsx · SignupForm.tsx      # Client useActionState; SignupForm export inputClass
@@ -292,9 +296,10 @@ Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` 
 
 ### 7.4 `components/chat/ChatPanel.tsx`
 - `useChat({ messages: initialMessages, transport: new DefaultChatTransport({ api: "/api/chat" }) })`.
-- Auto-scroll: `endRef.scrollIntoView` di effect `[messages, status]` (smooth saat idle, auto saat streaming).
+- Header sticky (TeraMark + judul + subteks) di dalam panel, plus kontrol reset inline dua langkah → `resetChatAction` (stop stream dulu bila busy, lalu `clearError()` + `setMessages([])`).
+- Smart auto-scroll: scroll listener pada scroll container terdekat (helper `getScrollParent`, fallback window) mengatur `atBottom` dengan threshold 140px; auto-scroll hanya saat dekat bawah, scroll ke `scrollHeight` container (menghindari konten tertutup sticky footer), `behavior: "instant"` saat load/streaming dan `"smooth"` saat idle; tombol "ke pesan terbaru" (ChevronDown) muncul saat `!atBottom`.
 - `submit(text)` → `sendMessage({ text })`; Enter kirim, Shift+Enter newline; textarea auto-grow (cap 128px).
-- Render: markdown AI via `ReactMarkdown` + `markdownComponents` (p/h/strong/ul/ol/li/a/code/pre di-map ke styling minimal); user bubble putih; typing dots saat `status === "submitted"`; error bar + `regenerate()`.
+- Render: markdown AI via `ReactMarkdown` + `markdownComponents` (p/h/strong/ul/ol/li/a/code/pre/blockquote/table di-map ke styling minimal); streaming caret via `.chat-streaming`; aksi salin per pesan AI (hover/focus reveal, feedback "Tersalin"); pesan punya exit animation; user bubble putih; typing dots saat `status === "submitted"`; error bar + `regenerate()`.
 
 ### 7.5 `lib/validation.ts` — inventaris schema zod
 `signInSchema`, `signUpSchema`, `onboardingSchema` (schoolOrigin/gradeLevel 10-12/interests 1-5), `assessmentAnswerSchema` (questionId uuid, score 1-5), `assessmentSkipSchema` (questionId), `gradeSchema` (subject 1-50, semester 1-5, score 0-100), `gradeDeleteSchema`, `profileSchema` (fullName + sekolah + kelas + interests).
@@ -319,6 +324,8 @@ Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` 
 | `completeGradesAction` | grades | — | validasi tiap semester wajib ≥7 mapel (default kelas ∪ semester terisi) → set flag → redirect `/dashboard`; `{ok:false,error}` berisi shortfall bila kurang |
 | `updateProfileAction` | profile | FormData | update nama/sekolah/kelas/minat → `{ok}` (indikator "Tersimpan") |
 | `restartTourAction` | profile | — | reset `onboarding_completed_at` → redirect `/onboarding` |
+| `resetChatAction` | chat | — | hapus semua `chat_sessions` user (cascade ke `chat_messages`) → `{ok}` / `{ok:false,error}` |
+| `runAnalysisAction` | analysis | — | pipeline AI + persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
 | `runAnalysisAction` | analysis | — | skoring deterministik (bobot 30/25/20/15/10) → narasi AI → persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
 
 Konvensi: semua diawali `"use server"`, guard `auth()` + `redirect("/login")`, validasi zod, error ramah berbahasa Indonesia.
