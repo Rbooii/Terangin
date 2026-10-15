@@ -58,7 +58,8 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 
 ### 3.3 Database & schema
 - PostgreSQL 18 lokal via Homebrew (`createdb terangin`, user `arcozkwn`, tanpa password). `DATABASE_URL=postgresql://arcozkwn@localhost:5432/terangin`.
-- Drizzle ORM + `postgres.js` driver. Workflow memakai **`db:push`** (bukan generate/migrate). Semua perubahan schema additive & aman.
+- Drizzle ORM + `postgres.js` driver. Workflow sekarang memakai **versioned migrations** (`db:generate` + `db:migrate`, file di `db/migrations/` di-commit). `db:push` tinggal untuk prototyping lokal.
+- DB lokal (`terangin`) sudah di-baseline (`drizzle.__drizzle_migrations` berisi 0000), jadi `db:migrate` aman dan no-op sampai ada migrasi baru.
 - Seluruh 12 tabel PRD dibuat, plus kolom/constraint tambahan (lihat `architecture.md` §5).
 
 ### 3.4 Onboarding (Fase 1)
@@ -180,7 +181,8 @@ Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system p
 - Upsert (`onConflictDoUpdate`) butuh unique constraint di schema — sudah dipasang untuk `user_assessment_answers` dan `academic_records`.
 - Transaksi: `db.transaction(async (tx) => {...})` (dipakai di persist analisis).
 - `decimal` dibaca sebagai string dari DB — konversi dengan `Number()` saat menampilkan/menghitung.
-- Seeding: `db:seed` / `db:seed-colleges` idempotent dan punya **jalur update non-destruktif** (tanpa `--force`): menerapkan tag dimensi soal / profil skoring jurusan berdasarkan kecocokan teks/nama — jawaban user aman. `--force` menghapus total (cascade) — jangan dipakai di DB yang berisi data user nyata.
+- Seeding idempotent: skip kalau tabel sudah terisi; `--force` untuk isi ulang (dengan peringatan cascade).
+- Migrasi: `drizzle-kit generate` menulis `db/migrations/` (SQL + snapshot + journal) yang wajib di-commit. `scripts/migrate.ts` membaca file itu dan mencatat hash sha256 + timestamp di `drizzle.__drizzle_migrations`; migrasi di-skip kalau `created_at` terakhir >= `when` di journal. **Jangan edit file migrasi yang sudah teraplikasi** (hash berubah dan migrasi baru bisa terlewat). DB yang sudah terisi schema harus di-baseline sekali (`scripts/baseline.ts`) supaya `migrate` tidak mencoba membuat ulang tabel.
 
 ### 4.7 Auth.js
 - `trustHost: true` wajib (production mode lokal).
@@ -219,11 +221,15 @@ GROQ_API_KEY=gsk_...
 **Script npm:**
 ```
 npm run dev / build / start / lint
-npm run db:push            # sync schema ke DB (workflow utama)
-npm run db:generate / db:migrate / db:studio   # tersedia, tidak dipakai
-npm run db:seed            # 24 soal asesmen (idempotent; tanpa --force kini juga memperbarui tag dimensi non-destruktif, --force untuk isi ulang total)
-npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent; tanpa --force juga memperbarui profil skoring jurusan, --force untuk isi ulang total)
+npm run db:generate        # buat migrasi baru dari perubahan db/schema.ts (commit hasilnya)
+npm run db:migrate         # terapkan migrasi (tsx scripts/migrate.ts)
+npm run db:baseline        # tandai migrasi existing applied tanpa dijalankan (sekali, untuk DB lama)
+npm run db:push            # sync schema langsung, hanya prototyping lokal
+npm run db:seed            # 24 soal asesmen (idempotent, --force untuk ulang)
+npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent, --force)
 ```
+
+**Pipeline DB production (Vercel):** `package.json` punya script `vercel-build` = `tsx scripts/migrate.ts && next build`. Vercel otomatis memakainya, sehingga setiap deploy menjalankan migrasi dulu sebelum kode baru melayani traffic. `scripts/migrate.ts` hanya jalan saat `VERCEL_ENV=production` (preview di-skip; override `FORCE_MIGRATE=1`). Prod DB yang sudah terisi schema cukup di-baseline sekali: `DATABASE_URL=<prod> npm run db:baseline`. Jangan pernah mengedit file migrasi yang sudah teraplikasi (hash sha256 file dipakai sebagai penanda di `drizzle.__drizzle_migrations`).
 
 **Alur dev:** `npm run dev` → http://localhost:3000. Untuk verifikasi produksi: `npm run build && npm run start`.
 
@@ -296,15 +302,12 @@ git checkout -- package-lock.json   # opsional: buang normalisasi lock dari npm 
 
 ## 8. Open items / next steps
 
-1. **Commit sisa perubahan** — analisis deterministik (§3.13/§3.14) masih uncommitted; saran pesan: "feat: analisis deterministik (skor berbobot + panel dasar penilaian)".
-2. **Review kurasi data skoring** — tag 24 dimensi soal (`db/seed.ts`) & profil 12 jurusan (`db/seed-colleges.ts`) adalah kurasi awal; sesuaikan lalu jalankan `npm run db:seed` + `npm run db:seed-colleges` (jalur update non-destruktif) dan ulangi unit check.
-3. **Fase 5: Rencana Aksi** — tabel `action_plans` sudah ada (`final_univ_major_id` FK ke `university_majors`, `roadmap_json`, `confidence_score` 1–100, `status` DRAFT/FINALIZED). Yang perlu dibangun: UI memilih 1–3 jurusan final dari rekomendasi, generate roadmap persiapan (AI, simpan ke `roadmap_json`), evaluasi keyakinan (slider/kuis singkat → `confidence_score`), finalize.
-4. **Fase 6: Hasil Akhir** — halaman ringkasan dokumen personal (analisis + dialog + roadmap), tombol unduh (PDF/print) & bagikan ke orang tua/guru BK.
-5. **Chat lanjutan** — multi-sesi (list sesi + judul), pagination riwayat (>50 pesan), mungkin regenerate/retry per pesan.
-6. **Opsional (dari PRD)** — integrasi Tavily untuk data kampus live; faktor ekonomi wilayah; beasiswa terstruktur.
-7. **Opsional teknis** — `not-found.tsx` & `error.tsx` kustom, rate limiting chat/analisis, halaman pengaturan akun, `proxy.ts` (middleware) untuk proteksi route (saat ini guard ada di masing-masing page).
-8. **Stabilitas skoring (opsional)** — saat ini 1 soal per dimensi (RIASEC/aptitude/kepribadian/gaya belajar); menambah soal per dimensi akan membuat skor lebih stabil.
-9. **Deployment** — Vercel: set env (`DATABASE_URL` cloud seperti Neon, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan), `db:push` ke DB cloud sebelum deploy.
+1. **Fase 5: Rencana Aksi** — tabel `action_plans` sudah ada (`final_univ_major_id` FK ke `university_majors`, `roadmap_json`, `confidence_score` 1–100, `status` DRAFT/FINALIZED). Yang perlu dibangun: UI memilih 1–3 jurusan final dari rekomendasi, generate roadmap persiapan (AI, simpan ke `roadmap_json`), evaluasi keyakinan (slider/kuis singkat → `confidence_score`), finalize.
+2. **Fase 6: Hasil Akhir** — halaman ringkasan dokumen personal (analisis + dialog + roadmap), tombol unduh (PDF/print) & bagikan ke orang tua/guru BK.
+3. **Chat lanjutan** — multi-sesi (list sesi + judul), pagination riwayat (>50 pesan), mungkin regenerate/retry per pesan.
+4. **Opsional (dari PRD)** — integrasi Tavily untuk data kampus live; faktor ekonomi wilayah; beasiswa terstruktur.
+5. **Opsional teknis** — `not-found.tsx` & `error.tsx` kustom, rate limiting chat/analisis, halaman pengaturan akun, `proxy.ts` (middleware) untuk proteksi route (saat ini guard ada di masing-masing page).
+6. **Deployment** — Vercel: set env Production (`DATABASE_URL` cloud seperti Neon pakai URL direct/unpooled untuk migrasi, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan). Migrasi otomatis via `vercel-build` → cukup baseline prod sekali (`DATABASE_URL=<prod> npm run db:baseline`) lalu push. Cek hasil: `select * from drizzle.__drizzle_migrations`.
 
 ---
 

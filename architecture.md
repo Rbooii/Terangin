@@ -48,7 +48,7 @@ PostgreSQL (Drizzle ORM + postgres.js)
 | Auth | next-auth (Auth.js v5) | 5.0.0-beta.32 | Credentials + JWT session, `trustHost: true` |
 | Hash password | bcryptjs | ^3.0.3 | cost 10 |
 | Validasi | zod | ^4.6.7 | Schema di `lib/validation.ts` + output schema AI |
-| ORM | drizzle-orm | ^0.45.4 | Schema-first, `db:push` workflow |
+| ORM | drizzle-orm | ^0.45.4 | Schema-first, versioned migrations (`db:generate` → `db:migrate`) |
 | Driver DB | postgres (postgres.js) | ^3.4.9 | Client singleton di `db/index.ts` |
 | Database | PostgreSQL | 18 (Homebrew lokal) | DB `terangin` |
 | AI SDK | ai | ^7.0.140 | `generateText`+`Output.object`, `streamText`, `convertToModelMessages`, `toUIMessageStream`, `createUIMessageStreamResponse` |
@@ -163,10 +163,13 @@ export const db = drizzle(client, { schema });   // singleton via globalThis di 
 
 **Catatan pembacaan:** kolom `decimal` dikembalikan sebagai **string** oleh driver → selalu `Number(...)` saat menghitung/menampilkan.
 
-### 5.3 Seeder
-- `db/seed.ts` (`npm run db:seed`): 24 soal asesmen (6 per kategori, Likert, RIASEC/Flanagan-inspired) + `dimension` per soal untuk skoring deterministik (RIASEC `I/A/S/E/C/R`, aptitude `numerik/verbal/spasial/mekanikal/data/memori`, kepribadian `sosial/terencana/pemberani/tangguh/kolaboratif/rasional`, gaya belajar `visual/auditori/praktik/latihan/mandiri/diskusi` — semua nama unik). Dua jalur: (a) tabel kosong → insert penuh; (b) tabel terisi tanpa `--force` → **update non-destruktif tag dimensi** dengan mencocokkan teks soal (jawaban user aman); `--force` hapus+isi ulang (cascade menghapus jawaban user).
-- `db/seed-colleges.ts` (`npm run db:seed-colleges`): 12 jurusan (+ `profile` jsonb bobot skoring: `riasec/aptitude/personality/learning/subjects`), 10 kampus (UI/ITB/UGM/IPB/Unpad/ITS/UNAIR/Undip/BINUS/Telkom), 34 relasi `university_majors` (daya tampung + estimasi UKT). Relasi di-link by-name setelah insert (map nama→id). Jalur update non-destruktif yang sama untuk `profile` jurusan (match by name).
-- `drizzle.config.ts`: `loadEnvConfig(process.cwd())` dari `@next/env` (agar `.env.local` terbaca drizzle-kit), dialect postgresql, schema `./db/schema.ts`, out `./db/migrations` (tidak dipakai; workflow `db:push`).
+### 5.3 Migration & seeder
+- `db/migrations/` (`npm run db:generate`): SQL versioned + `meta/_journal.json` + snapshot, di-commit ke git. Riwayat penerapan disimpan Drizzle di tabel `drizzle.__drizzle_migrations` (hash sha256 file + timestamp journal).
+- `scripts/migrate.ts` (`npm run db:migrate`): runner migrasi terprogram (`drizzle-orm/postgres-js/migrator`) yang dimuat juga oleh `vercel-build`. Guard: skip kalau `VERCEL_ENV` ada dan bukan `production` (override `FORCE_MIGRATE=1`). Aman diulang, migrasi teraplikasi di-skip.
+- `scripts/baseline.ts` (`npm run db:baseline`): sekali pakai untuk DB yang sudah terisi schema — tandai migrasi existing sebagai applied tanpa menjalankannya (abort kalau riwayat migrasi sudah ada).
+- `db/seed.ts` (`npm run db:seed`): 24 soal asesmen (6 per kategori, Likert, RIASEC/Flanagan-inspired), idempotent (skip kalau `questions` terisi; `--force` hapus+isi ulang dengan peringatan cascade).
+- `db/seed-colleges.ts` (`npm run db:seed-colleges`): 12 jurusan, 10 kampus (UI/ITB/UGM/IPB/Unpad/ITS/UNAIR/Undip/BINUS/Telkom), 34 relasi `university_majors` (daya tampung + estimasi UKT). Relasi di-link by-name setelah insert (map nama→id). Idempotent + `--force`.
+- `drizzle.config.ts`: `loadEnvConfig(process.cwd())` dari `@next/env` (agar `.env.local` terbaca drizzle-kit), dialect postgresql, schema `./db/schema.ts`, out `./db/migrations`.
 
 ---
 
@@ -260,6 +263,10 @@ terangin/
 │       └── text.ts             # sanitizeChatText: karakter tipografis non-ASCII jadi padanan standar
 ├── db/
 │   ├── schema.ts · index.ts · seed.ts · seed-colleges.ts
+│   └── migrations/             # SQL migrasi versioned + meta/_journal.json (di-commit)
+├── scripts/
+│   ├── migrate.ts              # Runner migrasi (dipakai lokal & vercel-build, guard VERCEL_ENV)
+│   └── baseline.ts             # Tandai migrasi existing applied (sekali, untuk DB lama)
 └── types/next-auth.d.ts        # Augmentasi Session.user.id
 ```
 
@@ -367,9 +374,9 @@ Alur POST:
 5. Groq: strict schema = semua field required; structured output tanpa streaming; `reasoningEffort` chat `high` (akurasi angka katalog), analisis `medium`.
 6. `trustHost: true` wajib di auth.ts.
 7. Upsert Drizzle butuh unique constraint; decimal = string dari driver.
-8. Seeder punya jalur update non-destruktif tanpa `--force` (tag dimensi soal / profil jurusan); `--force` menghapus data terkait (cascade).
-9. Playwright di-install sementara saat verifikasi lalu di-uninstall (mesin Windows: server verifikasi di port 3131, skrip `.mjs`; detail di `continue.md` §7).
-10. Analisis deterministik: skor/urutan tidak dari LLM (`buildAnalysisSchema` hanya `{majorId, reason}`); `FACTOR_WEIGHTS` (`lib/analysis/score.ts`) satu-satunya sumber bobot; soal baru wajib ber-`dimension`, jurusan baru wajib ber-`profile` (detail di `continue.md` §4.9).
+8. Seeder idempotent (skip kalau terisi; `--force` untuk ulang).
+9. Playwright di-install sementara saat verifikasi lalu di-uninstall.
+10. Migrasi versioned: hasil `db:generate` wajib di-commit; file migrasi yang sudah teraplikasi jangan diedit (penanda hash); DB lama cukup di-baseline sekali.
 
 ---
 
@@ -381,17 +388,21 @@ Alur POST:
 | Script | Fungsi |
 |--------|--------|
 | `dev` / `build` / `start` / `lint` | Next.js standar |
-| `db:push` | Sync schema ke DB (workflow utama) |
-| `db:generate` / `db:migrate` / `db:studio` | Tersedia, tidak dipakai |
-| `db:seed` | 24 soal asesmen + tag dimensi (`tsx db/seed.ts`; non-destruktif tanpa `--force`, `--force` reset total) |
-| `db:seed-colleges` | 12 jurusan (+ profil skoring) + 10 kampus + 34 relasi (`tsx db/seed-colleges.ts`; jalur update non-destruktif sama) |
+| `vercel-build` | `tsx scripts/migrate.ts && next build` (dipakai otomatis oleh Vercel) |
+| `db:generate` | Buat migrasi baru dari perubahan schema (`drizzle-kit generate`) |
+| `db:migrate` | Terapkan migrasi (`tsx scripts/migrate.ts`) |
+| `db:baseline` | Tandai migrasi existing applied tanpa dijalankan (`tsx scripts/baseline.ts`) |
+| `db:push` | Sync schema langsung, hanya untuk prototyping lokal |
+| `db:studio` | Drizzle Studio |
+| `db:seed` | 24 soal asesmen (`tsx db/seed.ts`, idempotent + `--force`) |
+| `db:seed-colleges` | 12 jurusan + 10 kampus + 34 relasi (`tsx db/seed-colleges.ts`) |
 
 ---
 
 ## 12. Verifikasi & testing
 
-- **Statis:** `npm run lint` + `npm run build` (semua route harus ter-generate tanpa error) + audit anti-slop.
-- **Unit check deterministik:** skrip `tsx` kecil untuk memverifikasi rumus `scoreMajors` dengan fixture angka yang dihitung manual (pola yang dipakai saat memverifikasi analisis deterministik).
-- **E2E:** pola playwright-core + Chrome sistem (fallback msedge); install sementara → jalankan skrip `.mjs` di root repo → uninstall. Di mesin Windows: server verifikasi di port 3131 (dev user biasanya di 3000). Detail langkah + resep user uji ada di `continue.md` §6–7.
-- **Cek DB:** via skrip node (`@next/env` + `postgres`) karena `psql` tidak tersedia di PATH mesin ini; verifikasi persist (jawaban, nilai, rekomendasi + `factors`, chat).
-- **Verifikasi AI:** butuh `GROQ_API_KEY` valid; chat diuji sampai jawaban menyebut angka dari katalog (daya tampung/UKT) dan tidak keluar scope; analisis diuji reproducible (dua kali run → skor & urutan identik).
+- **Statis:** `npm run lint` + `npm run build` (semua route harus ter-generate tanpa error).
+- **E2E:** pola playwright-core + Chrome sistem; install sementara → jalankan skrip inline (`node --input-type=module -e "..."`) → uninstall. Detail langkah + akun test ada di `continue.md` §6–7.
+- **Cek DB langsung:** `psql -d terangin -c "..."` untuk memverifikasi persist (jawaban, nilai, rekomendasi, chat).
+- **Cek migrasi:** `npm run db:migrate` dua kali harus no-op di run kedua; riwayat ada di `select * from drizzle.__drizzle_migrations`.
+- **Verifikasi AI:** butuh `GROQ_API_KEY` valid; chat diuji sampai jawaban menyebut angka dari katalog (daya tampung/UKT) dan merujuk hasil analisis.
