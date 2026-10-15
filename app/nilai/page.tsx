@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { academicRecords } from "@/db/schema";
 import AppShell from "@/components/app/AppShell";
 import GradeInput from "@/components/grades/GradeInput";
+import { defaultSemestersFor } from "@/lib/grades";
 import { getJourneySteps, getUserProfile } from "@/lib/onboarding";
 
 export const instant = false;
@@ -15,12 +16,6 @@ export const metadata: Metadata = {
   title: "Input Nilai: Terang.in",
   description: "Masukin nilai rapor tiap semester sesuai kecepatanmu.",
 };
-
-function defaultSemestersFor(gradeLevel: number | null): number[] {
-  if (gradeLevel === 10) return [1, 2];
-  if (gradeLevel === 11) return [1, 2, 3, 4];
-  return [1, 2, 3, 4, 5];
-}
 
 export default async function GradesPage() {
   await connection();
@@ -59,8 +54,8 @@ export default async function GradesPage() {
         Input Nilai
       </h1>
       <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
-        Masukin nilai rapor per semester. Fokus ke mata pelajaran utama dulu
-        juga nggak masalah, kamu bisa lengkapin kapan aja.
+        Masukin nilai rapor tiap semester. Minimal 7 mata pelajaran per
+        semester biar analisisnya akurat. Kamu tetap bisa ngubah kapan aja.
       </p>
       <div className="mt-8">
         <GradeInput

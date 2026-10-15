@@ -51,6 +51,7 @@ export const questions = pgTable("questions", {
   category: assessmentCategory("category").notNull(),
   questionText: text("question_text").notNull(),
   orderIndex: integer("order_index").notNull().default(0),
+  dimension: varchar("dimension", { length: 30 }),
 });
 
 export const userAssessmentAnswers = pgTable(
@@ -98,6 +99,7 @@ export const majors = pgTable("majors", {
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
   careerProspects: text("career_prospects"),
+  profile: jsonb("profile"),
 });
 
 export const universities = pgTable("universities", {
@@ -148,6 +150,7 @@ export const analysisRecommendations = pgTable("analysis_recommendations", {
   }).notNull(),
   rankOrder: integer("rank_order").notNull(),
   reason: text("reason"),
+  factors: jsonb("factors"),
 });
 
 export const chatSessions = pgTable("chat_sessions", {

@@ -15,6 +15,7 @@ import {
   TrashIcon,
 } from "@/components/landing/icons";
 import { resetChatAction } from "@/lib/actions/chat";
+import { sanitizeChatText } from "@/lib/chat/text";
 
 const markdownComponents: Components = {
   p: ({ children }) => <p className="mb-2.5 last:mb-0">{children}</p>,
@@ -453,7 +454,9 @@ export default function ChatPanel({
         <div className="space-y-6 pb-2">
           <AnimatePresence initial={false}>
             {messages.map((message) => {
-              const text = messageText(message);
+              const raw = messageText(message);
+              const text =
+                message.role === "assistant" ? sanitizeChatText(raw) : raw;
               if (!text && message.role === "assistant") return null;
               if (message.role === "user") {
                 return (

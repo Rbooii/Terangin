@@ -13,6 +13,7 @@ import { chatMessages, chatSessions } from "@/db/schema";
 import { getUserChatContext } from "@/lib/chat/context";
 import { buildChatSystemPrompt } from "@/lib/chat/prompt";
 import { extractMessageText, rowToUIMessage } from "@/lib/chat/messages";
+import { sanitizeChatText } from "@/lib/chat/text";
 
 export const maxDuration = 60;
 
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(history),
     temperature: 0.7,
     providerOptions: {
-      groq: { reasoningEffort: "medium" },
+      groq: { reasoningEffort: "high" },
     },
   });
 
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
           .reverse()
           .find((message) => message.role === "assistant");
         const assistantText = assistant
-          ? extractMessageText(assistant)
+          ? sanitizeChatText(extractMessageText(assistant))
           : "";
         if (!assistantText) return;
         try {

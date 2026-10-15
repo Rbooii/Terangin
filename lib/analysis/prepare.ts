@@ -38,6 +38,7 @@ export async function prepareAnalysisData(userId: string) {
       category: questions.category,
       questionText: questions.questionText,
       score: userAssessmentAnswers.score,
+      dimension: questions.dimension,
     })
     .from(userAssessmentAnswers)
     .innerJoin(questions, eq(userAssessmentAnswers.questionId, questions.id))
@@ -68,6 +69,22 @@ export async function prepareAnalysisData(userId: string) {
       return [category, average];
     }),
   ) as Record<CategoryName, number | null>;
+
+  const dimensionValues = new Map<string, number[]>();
+  for (const row of answered) {
+    if (!row.dimension) continue;
+    const list = dimensionValues.get(row.dimension) ?? [];
+    list.push(row.score);
+    dimensionValues.set(row.dimension, list);
+  }
+  const dimensionScores: Record<string, number | null> = {};
+  for (const [dimension, values] of dimensionValues) {
+    const average =
+      values.reduce((sum, value) => sum + value, 0) / values.length;
+    dimensionScores[dimension] = Number(
+      (((average - 1) / 4) * 100).toFixed(1),
+    );
+  }
 
   const sortedAnswers = [...answered].sort((a, b) => b.score - a.score);
   const topAnswers = sortedAnswers
@@ -118,6 +135,7 @@ export async function prepareAnalysisData(userId: string) {
       name: majors.name,
       description: majors.description,
       careerProspects: majors.careerProspects,
+      profile: majors.profile,
     })
     .from(majors)
     .orderBy(asc(majors.name));
@@ -159,6 +177,7 @@ export async function prepareAnalysisData(userId: string) {
       answeredCount: answered.length,
       skippedCount: answerRows.length - answered.length,
       categoryAverages,
+      dimensionScores,
       topAnswers,
       lowAnswers,
     },

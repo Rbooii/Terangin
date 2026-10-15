@@ -20,6 +20,16 @@ function formatTuition(value: string | null) {
   return `sekitar Rp ${millions}jt per semester`;
 }
 
+type FactorBreakdown = {
+  minat?: number | null;
+  bakat?: number | null;
+  nilai?: number | null;
+  kepribadian?: number | null;
+  gayaBelajar?: number | null;
+  total?: number | null;
+  match?: number | null;
+};
+
 export async function getUserChatContext(userId: string): Promise<string> {
   const data = await prepareAnalysisData(userId);
 
@@ -35,6 +45,7 @@ export async function getUserChatContext(userId: string): Promise<string> {
         matchPercentage: analysisRecommendations.matchPercentage,
         rankOrder: analysisRecommendations.rankOrder,
         reason: analysisRecommendations.reason,
+        factors: analysisRecommendations.factors,
       })
       .from(analysisRecommendations)
       .innerJoin(majors, eq(analysisRecommendations.majorId, majors.id))
@@ -100,12 +111,15 @@ export async function getUserChatContext(userId: string): Promise<string> {
       alignmentNote?: string;
     };
     const recommendationLines = recommendationRows
-      .map(
-        (item) =>
-          `- Rank ${item.rankOrder}: ${item.majorName} (kecocokan ${Number(
-            item.matchPercentage,
-          ).toFixed(0)}%). Alasan: ${item.reason ?? "-"}`,
-      )
+      .map((item) => {
+        const factors = (item.factors ?? null) as FactorBreakdown | null;
+        const factorText = factors
+          ? ` Sub-skor: minat ${factors.minat ?? "-"}, bakat ${factors.bakat ?? "-"}, nilai ${factors.nilai ?? "-"}, kepribadian ${factors.kepribadian ?? "-"}, gaya belajar ${factors.gayaBelajar ?? "-"}.`
+          : "";
+        return `- Rank ${item.rankOrder}: ${item.majorName} (kecocokan ${Number(
+          item.matchPercentage,
+        ).toFixed(0)}%).${factorText} Alasan: ${item.reason ?? "-"}`;
+      })
       .join("\n");
     sections.push(
       [
@@ -115,6 +129,7 @@ export async function getUserChatContext(userId: string): Promise<string> {
         details.strengths && details.strengths.length > 0
           ? `- Kekuatan: ${details.strengths.join("; ")}`
           : "",
+        "- Skor kecocokan dihitung sistem dengan bobot tetap: Minat 30 persen, Bakat 25 persen, Nilai rapor 20 persen, Kepribadian 15 persen, Gaya belajar 10 persen.",
         "- Rekomendasi jurusan:",
         recommendationLines,
       ]
@@ -129,16 +144,20 @@ export async function getUserChatContext(userId: string): Promise<string> {
       if (campuses.length === 0) return null;
       const campusText = campuses
         .map((campus) => {
-          const parts = [campus.universityName];
-          if (campus.location) parts.push(campus.location);
-          if (campus.type) parts.push(campus.type);
-          if (campus.capacity) parts.push(`daya tampung sekitar ${campus.capacity}`);
+          const meta = [campus.location, campus.type].filter(Boolean).join(", ");
+          const name = meta
+            ? `${campus.universityName} (${meta})`
+            : campus.universityName;
+          const details: string[] = [];
+          if (campus.capacity)
+            details.push(`daya tampung sekitar ${campus.capacity}`);
           const tuition = formatTuition(campus.estimatedTuition);
-          if (tuition) parts.push(`UKT ${tuition}`);
-          return `${parts[0]} (${parts.slice(1).join(", ")})`;
+          if (tuition) details.push(`UKT ${tuition}`);
+          const detailText = details.length > 0 ? `: ${details.join(", ")}` : "";
+          return `  - ${name}${detailText}`;
         })
-        .join("; ");
-      return `- ${major.name}: ${campusText}`;
+        .join("\n");
+      return `- ${major.name}:\n${campusText}`;
     })
     .filter(Boolean)
     .join("\n");
