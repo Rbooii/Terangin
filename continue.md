@@ -6,7 +6,7 @@
 
 ## 1. Apa ini
 
-**Terang.in** adalah platform analisis + AI chatbot untuk membantu siswa SMA menentukan jurusan kuliah dengan sadar. Fitur inti per PRD: asesmen minat/bakat/kepribadian/gaya belajar, input nilai rapor, analisis AI yang mencocokkan minat vs kemampuan, chatbot personal "Tera" yang menjawab dengan data kampus nyata dari database, dan (belum diimplementasi) rencana aksi final.
+**Terang.in** adalah platform analisis + AI chatbot untuk membantu siswa SMA menentukan jurusan kuliah dengan sadar. Fitur inti per PRD: asesmen minat/bakat/kepribadian/gaya belajar, input nilai rapor, analisis rekomendasi jurusan dengan **skoring deterministik berbobot** (Minat 30 / Bakat 25 / Nilai 20 / Kepribadian 15 / Gaya belajar 10) yang dinarasikan AI, chatbot personal "Tera" yang menjawab dengan data kampus nyata dari database, dan (belum diimplementasi) rencana aksi final.
 
 Aplikasi terdiri dari:
 - **Landing page publik** (`/`) yang direplikasi 1:1 dari desain `UI_DESIGN_PNG/Landing Page.png`
@@ -22,16 +22,18 @@ Aplikasi terdiri dari:
 | — | Auth (signup/login/logout, session) | ✅ Selesai | E2E penuh |
 | — | Guard halaman publik: sudah login → `/dashboard` | ✅ Selesai | E2E 9/9 (guest, signup, login, logout) |
 | 1 | Onboarding (data dasar + tur 4 slide) | ✅ Selesai | E2E penuh |
-| 2a | Asesmen Minat & Bakat (24 soal) | ✅ Selesai | E2E penuh + cek DB |
+| 2a | Asesmen Minat & Bakat (24 soal + tag dimensi skoring) | ✅ Selesai | E2E penuh + cek DB |
 | 2b | Input Nilai (dinamis per semester + wajib 7 mapel/semester) | ✅ Selesai | E2E penuh + cek DB |
-| 3 | Hasil Analisis (AI Groq) | ✅ Selesai | E2E dengan AI sungguhan (4 detik generate) |
-| 4 | Chat Tera (streaming AI) | ✅ Selesai | E2E AI nyata + cek DB |
+| 3 | Hasil Analisis (skoring deterministik + narasi AI Groq) | ✅ Selesai | Unit check rumus 7/7 + E2E 10/10 + reproducible 2 run |
+| 4 | Chat Tera (streaming AI + pembatasan scope + protokol curhat) | ✅ Selesai | E2E 12/12 + sanitasi teks + cek DB |
 | 5 | Action Plan / Rencana Aksi | ❌ **Belum** | Tabel `action_plans` sudah ada |
 | 6 | Hasil Akhir (export/share) | ❌ **Belum** | — |
 
-**Kualitas saat ini:** `npm run lint` bersih, `npm run build` bersih (semua route ter-render), audit AI-slop bersih, semua flow terverifikasi E2E dengan Playwright + Chrome sistem.
+**Kualitas saat ini:** `npm run lint` bersih, `npm run build` bersih, audit AI-slop bersih (app/components/lib/db). Semua fitur diverifikasi dengan unit check + E2E Playwright + pemeriksaan DB. Hasil verifikasi terakhir: unit check rumus skoring 7/7 PASS, E2E analisis 10/10 PASS (reproducible: dua kali run identik 87/84/83/82/81).
 
-**Kondisi database:** semua tabel ter-push, seed lengkap (24 soal, 12 jurusan, 10 kampus, 34 relasi kampus-jurusan). Ada user test lengkap (lihat §6). Catatan mesin Windows saat ini: tabel `users` kosong (akun §6 belum ada, buat ulang via signup bila perlu) dan `psql` tidak tersedia di PATH.
+**Kondisi database (mesin Windows saat ini):** schema ter-push dan seed sudah dimigrasi ke format skoring: 24 soal (24/24 punya `dimension`), 12 jurusan (12/12 punya `profile`), 10 kampus, 34 relasi. Tabel `users` hanya berisi akun milik user (`michaelkevin3112@gmail.com`, `bloxfruit737@gmail.com`) — akun test E2E selalu dihapus setelah sesi; lihat §6 untuk resep membuat user uji. `psql` tidak tersedia di PATH (pakai skrip node).
+
+**State git:** commit terakhir `c16fc03` ("feat: redirect login, validasi nilai minimum, dan pembatasan scope chat") mencakup guard redirect halaman publik, validasi 7 mapel, dan pembatasan scope chat. Perubahan **analisis deterministik (§3.13) masih uncommitted** di working tree saat dokumen ini ditulis (detail di §3.14).
 
 ---
 
@@ -80,6 +82,7 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 - Tombol "Selesai" eksplisit (`grades_completed_at`), halaman tetap bisa dibuka untuk edit (banner hijau).
 
 ### 3.7 Analisis AI (Fase 3)
+> Catatan: deskripsi di bawah adalah versi awal. Sejak §3.13, skor & urutan dihitung kode (deterministik) dan LLM hanya menarasikan — prompt "13 prinsip" sudah digantikan prompt narasi.
 - **Stack:** Vercel AI SDK v7 (`ai@7`) + `@ai-sdk/groq` + model **`openai/gpt-oss-120b`**.
 - **Temuan penting:** Groq Structured Outputs (mode strict, constrained decoding) **tidak mendukung streaming** → generate blocking dengan UI progress bertahap beranimasi. Hasil generate hanya ~4 detik.
 - Data kampus: **seed SQL kurasi** (`db/seed-colleges.ts`) — 12 jurusan, 10 kampus PTN/PTS, 34 relasi dengan daya tampung + estimasi UKT (ditandai "perkiraan" di UI). Tavily tidak dipakai (keputusan user).
@@ -121,6 +124,22 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 - Temuan uji: model sempat mencampur daya tampung TI@UI (70) dengan SI@UI (55) saat baris katalog berdekatan. Fixed lewat format per-baris + instruksi baca baris + effort high.
 - Verifikasi: `npm run lint` + `npm run build` bersih; E2E Playwright 12/12 PASS (5 kasus out-of-scope ditolak konsisten termasuk roleplay dan tekanan ulang; curhat nyambung ditangani empati + langkah; curhat tidak nyambung diarahkan balik; krisis → BK/orang dewasa tanpa hotline; angka katalog TI@UI 70 dan SI@UI 55 benar; tanpa emoji/em dash/NBH di semua respons).
 
+### 3.13 Analisis deterministik: skor dihitung kode, LLM hanya menarasikan
+- Permintaan user: rekomendasi jurusan harus jelas dasar perhitungannya (faktor apa saja, algoritma per segmen, pengaruh tiap faktor seberapa besar).
+- Keputusan: skoring penuh di kode. Bobot tetap `FACTOR_WEIGHTS` (`lib/analysis/score.ts`): Minat 30%, Bakat 25%, Nilai rapor 20%, Kepribadian 15%, Gaya belajar 10%. Sub-skor tiap faktor 0-100 (dari `dimensionScores` hasil tag dimensi soal, dinormalisasi terhadap data yang tersedia); total = rata-rata berbobot dari faktor yang ada datanya (minimal 2 faktor); `match = clamp(40..97, 40 + 0.57 x total)`; peringkat diambil top 5.
+- Data kurasi baru: `questions.dimension` (24 tag: RIASEC, aptitude, kepribadian, gaya belajar) dan `majors.profile` jsonb (bobot skoring per jurusan: riasec/aptitude/personality/learning/subjects). Kedua seed punya jalur update non-destruktif (tanpa --force) supaya jawaban user tidak terhapus. Kolom baru lain: `analysis_recommendations.factors` jsonb (rincian sub-skor).
+- LLM (Groq) sekarang hanya menulis narasi: personalityType, summary, strengths, alignmentNote, dan reason per jurusan (wajib menyebut sub-skor); skema output hanya `{ majorId, reason }` dalam enum top 5. Ada fallback reason deterministik kalau LLM melewatkan satu jurusan. `details` menyimpan `weights` + `method: "deterministic-v1"`.
+- UI: chip bobot faktor + panel sub-skor per rekomendasi (`FactorBreakdown`) di halaman hasil; hasil lama tanpa `factors` tetap tampil tanpa panel. Konteks chat ikut memuat sub-skor + bobot supaya Tera bisa menjelaskan angka (dan dilarang mengubahnya).
+- Verifikasi: unit check rumus 7/7 PASS (angka hitung manual vs output; top-1 Teknik Informatika); E2E Playwright 10/10 PASS (alur analisis penuh + chip bobot + panel sub-skor + DB factors lengkap + match konsisten rumus + reproducible: dua kali run identik 87/84/83/82/81); lint + build bersih.
+- Catatan: isi tag dimensi & profil jurusan adalah kurasi awal sesi ini (mudah diubah lewat seed karena murni data); minat awal onboarding sengaja tidak masuk rumus, perannya validasi silang di `alignmentNote`.
+
+### 3.14 Housekeeping: state git & cakupan sesi
+- Task 1-3 sesi ini (guard redirect halaman publik §3.10, validasi minimal 7 mapel §3.11, pembatasan scope chat §3.12) sudah di-commit user sebagai `c16fc03`.
+- Task 4 (analisis deterministik §3.13) + seluruh update dokumentasi MASIH UNCOMMITTED saat dokumen ini ditulis. File yang terlibat: `lib/analysis/score.ts` (baru), `lib/analysis/prepare.ts`, `lib/analysis/prompt.ts`, `lib/analysis/schema.ts`, `lib/actions/analysis.ts`, `app/analisis/page.tsx`, `components/analysis/AnalysisPanel.tsx`, `lib/chat/context.ts`, `lib/chat/prompt.ts`, `db/schema.ts`, `db/seed.ts`, `db/seed-colleges.ts`, plus `architecture.md`, `continue.md`, `ui.md`.
+- Semua sudah terverifikasi (lint/build bersih, unit check 7/7, E2E analisis 10/10). Saran pesan commit: "feat: analisis deterministik (skor berbobot + panel dasar penilaian)".
+- Urutan kerja sesi ini: (1) guard halaman publik → (2) validasi minimal 7 mapel/semester → (3) pembatasan scope chat + protokol curhat → (4) analisis deterministik → (5) dump dokumentasi ini.
+- Migrasi DB sesi ini: `db:push` (kolom baru: `questions.dimension`, `majors.profile`, `analysis_recommendations.factors`) lalu `db:seed` + `db:seed-colleges` lewat jalur non-destruktif (jawaban user lama tidak terhapus).
+
 ---
 
 ## 4. Gotcha & konvensi wajib (JANGAN ulangi kesalahan ini)
@@ -128,7 +147,7 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 ### 4.1 Next 16 `cacheComponents` + auth
 `next.config.ts` mengaktifkan `cacheComponents: true`. Membaca session (`auth()` → cookies) di halaman membuat route error saat build/prerender **kecuali**:
 - dibungkus `<Suspense>` (pola landing: `AuthNav` di-stream), atau
-- halaman memakai `export const instant = false` + `await connection()` di awal (pola semua halaman app: onboarding, dashboard, assessment, nilai, analisis, profil, chat).
+- halaman memakai `export const instant = false` + `await connection()` di awal (pola semua halaman app: onboarding, dashboard, assessment, nilai, analisis, profil, chat, dan kini juga `/` + `/login` + `/signup` untuk guard redirect).
 
 **Bug yang pernah muncul:** `crypto.getRandomValues() while prerendering` (dari Auth.js saat re-encode JWT) di route ber-session → fixed dengan `await connection()` sebelum `auth()`. Jangan hapus pemanggilan `connection()` ini.
 
@@ -150,18 +169,18 @@ Dilarang di copy UI: em dash `—`, en dash `–`, panah teks `→ ←`, middot 
 ```bash
 grep -rn -E "—|–|→|←|· " app components lib --include="*.tsx" --include="*.ts" | grep -v "Math\|=>" || echo "CLEAN slop"
 ```
-Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system prompt — jangan hapus aturan itu. Untuk chat, ada lapisan tambahan `sanitizeChatText` (`lib/chat/text.ts`) karena model tetap kadang menghasilkan karakter tipografis (em dash, non-breaking hyphen) walau sudah dilarang.
+Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system prompt — jangan hapus aturan itu. Untuk chat, ada lapisan tambahan `sanitizeChatText` (`lib/chat/text.ts`) karena model terbukti tetap menghasilkan karakter tipografis (em dash U+2014, non-breaking hyphen U+2011) walau sudah dilarang — jangan andalkan prompt saja.
 
 ### 4.5 Groq
 - Structured outputs: mode strict, **semua field wajib required**, dan **tidak bisa streaming** (streaming + structured outputs belum didukung Groq). Chat streaming biasa (teks) aman.
-- Model: `openai/gpt-oss-120b` (murah, cepat ~500 tps). `reasoningEffort`: analysis medium, chat medium.
+- Model: `openai/gpt-oss-120b`. `reasoningEffort`: **chat `high`** (akurasi angka katalog; dengan medium pernah salah 2 kali di kasus yang sama), **analisis `medium`** (tugasnya kini hanya menarasikan skor yang sudah dihitung kode).
 - `GROQ_API_KEY` di `.env.local` — kalau kosong, action analisis mengembalikan error ramah (bukan crash).
 
 ### 4.6 Drizzle + postgres.js
 - Upsert (`onConflictDoUpdate`) butuh unique constraint di schema — sudah dipasang untuk `user_assessment_answers` dan `academic_records`.
 - Transaksi: `db.transaction(async (tx) => {...})` (dipakai di persist analisis).
 - `decimal` dibaca sebagai string dari DB — konversi dengan `Number()` saat menampilkan/menghitung.
-- Seeding idempotent: skip kalau tabel sudah terisi; `--force` untuk isi ulang (dengan peringatan cascade).
+- Seeding: `db:seed` / `db:seed-colleges` idempotent dan punya **jalur update non-destruktif** (tanpa `--force`): menerapkan tag dimensi soal / profil skoring jurusan berdasarkan kecocokan teks/nama — jawaban user aman. `--force` menghapus total (cascade) — jangan dipakai di DB yang berisi data user nyata.
 
 ### 4.7 Auth.js
 - `trustHost: true` wajib (production mode lokal).
@@ -169,10 +188,20 @@ Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system p
 - `signIn` di server action dengan `redirectTo` → throw `NEXT_REDIRECT`; jangan catch kecuali `AuthError` (rethrow yang lain).
 
 ### 4.8 Testing pattern
-- Playwright dipakai dengan **`playwright-core` + Chrome sistem** (`channel: "chrome"`), di-install sementara (`npm i -D playwright-core`) lalu **di-uninstall setelah selesai** agar deps tetap bersih sesuai stack.
-- Server: `lsof -ti:3000 | xargs kill` → `npm run build` → `(npm run start >/tmp/terangin-server.log 2>&1 &)`.
-- Screenshot disimpan ke `/var/folders/_3/54x2lq551ws0v9146ddt1nsr0000gn/T/opencode/`.
-- **Pitfall test yang pernah bikin false alarm (bukan bug app):** setelah reload, `activeSemester` di `/nilai` kembali ke Semester 1 (state client); selector Playwright ambigu ("Soal 1" juga cocok "Soal 10" — pakai exact/regex); teks `main` mencakup riwayat lama (cek pesan terakhir via DB untuk verifikasi presisi).
+- Playwright pakai **`playwright-core` + Chrome sistem** (`chromium.launch({ channel: "chrome" })`, fallback `"msedge"`), di-install sementara (`npm i -D playwright-core`) lalu **di-uninstall setelah selesai** agar deps tetap bersih.
+- **Windows (mesin saat ini):** server dev user biasanya jalan di port 3000 — JANGAN dibunuh. Verifikasi memakai server produksi di port lain: `$env:PORT="3131"; npm run start`. Kill by port: `Get-NetTCPConnection -LocalPort 3131 -State Listen` → `Stop-Process -Id`. `psql`/`pg_isready` tidak ada di PATH — inspeksi DB pakai skrip node kecil (`@next/env` loadEnvConfig + `postgres`).
+- Skrip E2E ditulis sebagai file `.mjs` di root repo (inline `node -e` rusak karena quoting PowerShell), dijalankan dari repo agar `playwright-core`/`postgres` resolve, lalu **dihapus** setelah selesai. Skrip boleh langsung setup/cek DB via postgres.
+- `npm install/uninstall` mengubah `package-lock.json` (normalisasi npm) → kembalikan dengan `git checkout -- package-lock.json` bila tidak ingin lock tercampur ke commit.
+- Skrip `.ts` via `npx tsx` perlu dibungkus `async function main()` (tsx default CJS, top-level await tidak didukung).
+- **Pitfall test yang pernah bikin false alarm (bukan bug app):** setelah reload, `activeSemester` di `/nilai` kembali ke Semester 1 (state client); selector Playwright ambigu ("Soal 1" juga cocok "Soal 10" — pakai exact/regex); teks `main` mencakup riwayat lama (cek pesan terakhir via DB untuk verifikasi presisi); animasi tour onboarding butuh jeda kecil antar klik "Lanjut".
+
+### 4.9 Analisis deterministik & data kurasi
+- Skor dan urutan rekomendasi **bukan dari LLM**. `buildAnalysisSchema` hanya boleh menghasilkan `{ majorId, reason }` (+ field narasi lain); jangan tambahkan kembali `matchPercentage`/`rankOrder` ke output model.
+- `FACTOR_WEIGHTS` (`lib/analysis/score.ts`) = satu-satunya sumber bobot (30/25/20/15/10). Kalau diubah: update chip bobot UI (`AnalysisPanel` memakai konstanta ini), dokumentasi, dan ulangi unit check rumus.
+- Normalisasi: faktor tanpa data di-renormalisasi (bukan dianggap 0); minimal 2 faktor agar total dihitung; soal skip (score 0) tidak ikut `dimensionScores`.
+- Menambah soal asesmen baru: WAJIB isi `dimension` (nama unik, lihat daftar di `db/seed.ts`) supaya ikut skoring; soal tanpa dimensi hanya masuk rata-rata kategori.
+- Menambah jurusan baru: isi `profile` (riasec/aptitude/personality/learning/subjects) di `db/seed-colleges.ts`; jurusan tanpa profil tidak akan pernah masuk rekomendasi.
+- Katalog konteks chat HARUS tetap satu kampus per baris (`lib/chat/context.ts`); pernah terjadi model mencampur angka dua jurusan satu kampus (TI@UI 70 vs SI@UI 55) saat baris dirapatkan.
 
 ---
 
@@ -185,78 +214,97 @@ AUTH_SECRET=<openssl rand -base64 33>
 GROQ_API_KEY=gsk_...
 ```
 
-**Postgres lokal:** Homebrew `postgresql@18`, database `terangin` (user OS `arcozkwn`, trust auth lokal). Pastikan service jalan: `pg_isready`. Setup pertama: `createdb terangin` → `npm run db:push` → `npm run db:seed` → `npm run db:seed-colleges`.
+**Postgres lokal:** di mesin Windows saat ini, `DATABASE_URL` di `.env.local` menunjuk Postgres lokal yang berjalan di port 5432 (cek cepat: `Test-NetConnection localhost -Port 5432`). `psql`/`pg_isready` tidak tersedia di PATH — inspeksi DB pakai skrip node kecil (lihat §7). Catatan mesin asal (Mac): Homebrew `postgresql@18`, user OS `arcozkwn`. Setup dari nol: `createdb terangin` → `npm run db:push` → `npm run db:seed` → `npm run db:seed-colleges`.
 
 **Script npm:**
 ```
 npm run dev / build / start / lint
 npm run db:push            # sync schema ke DB (workflow utama)
 npm run db:generate / db:migrate / db:studio   # tersedia, tidak dipakai
-npm run db:seed            # 24 soal asesmen (idempotent, --force untuk ulang)
-npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent, --force)
+npm run db:seed            # 24 soal asesmen (idempotent; tanpa --force kini juga memperbarui tag dimensi non-destruktif, --force untuk isi ulang total)
+npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent; tanpa --force juga memperbarui profil skoring jurusan, --force untuk isi ulang total)
 ```
 
 **Alur dev:** `npm run dev` → http://localhost:3000. Untuk verifikasi produksi: `npm run build && npm run start`.
+
+**Catatan port (mesin ini):** dev server user biasanya menempati port 3000 — untuk verifikasi otomatis jalankan server produksi di port lain (`$env:PORT="3131"; npm run start`) dan matikan berdasarkan port setelah selesai.
 
 ---
 
 ## 6. Akun & data test
 
-Semua akun test password: **`password123`**.
+**Kondisi mesin Windows saat ini:** tabel `users` hanya berisi akun milik user (`michaelkevin3112@gmail.com`, `bloxfruit737@gmail.com`) — JANGAN disentuh. Akun test yang dibuat skrip E2E selalu dihapus di blok `finally` (delete by email + cascade). Akun test era mesin Mac (`tera.*@example.com`) tidak ada di mesin ini.
 
-| Email | Kelas | Onboarding | Asesmen | Nilai | Analisis | Kegunaan |
-|-------|-------|-----------|---------|-------|----------|----------|
-| `tera.nilai3.1791999472662@example.com` | 10 | ✅ | ✅ | ✅ | ✅ | **Akun utama E2E** — journey lengkap + riwayat chat + hasil analisis |
-| `tera.sb.1792000221789@example.com` | 12 | ✅ | ✅ | ❌ | ❌ | Test locked state (kartu nilai/analisis/chat terkunci) |
-| `tera.nilai2.1791999298780@example.com` | 10 | ✅ | ✅ | ❌ | ❌ | Guard `/nilai` |
-| `tera.v5.1791998507381@example.com` | 12 | ✅ | ❌ | ❌ | ❌ | Guard `/assessment` |
-| `tera.v4.1791998376057@example.com` | 12 | ✅ | ❌ | ❌ | ❌ | Sama seperti v5 |
-| `mekel@gmail.com` | 12 | ✅ | ✅ | ✅ | ✅ | Akun manual milik user (password tidak diketahui) |
+**Resep membuat user uji lengkap (instan, via DB)** — pola yang dipakai skrip E2E sesi ini:
+1. Signup + onboarding lewat UI (atau insert manual) → ambil `select id from users where email = '<email uji>'`.
+2. Set flag: `update users set assessment_completed_at = now(), grades_completed_at = now() where id = ...` (`onboarding_completed_at` terisi otomatis dari alur UI).
+3. Insert jawaban asesmen per dimensi (soal sudah ber-tag `dimension`). Fixture yang dipakai verifikasi analisis deterministik (skor 1-5):
 
-**Reset data user** (bank soal & katalog kampus tetap): 
-```sql
-TRUNCATE TABLE users CASCADE;  -- cascade ke jawaban, nilai, analisis, chat, action plans
-```
+| Dimensi | Skor | Dimensi | Skor | Dimensi | Skor | Dimensi | Skor |
+|---|---|---|---|---|---|---|---|
+| I | 5 | numerik | 5 | sosial | 2 | visual | 3 |
+| A | 3 | verbal | 4 | terencana | 4 | auditori | 2 |
+| S | 3 | spasial | 3 | pemberani | 3 | praktik | 3 |
+| E | 2 | mekanikal | 3 | tangguh | 4 | latihan | 4 |
+| C | 3 | data | 5 | kolaboratif | 3 | mandiri | 4 |
+| R | 2 | memori | 3 | rasional | 5 | diskusi | 2 |
 
-**Data seed:** 24 soal (6×4 kategori), 12 jurusan, 10 kampus (8 PTN + 2 PTS), 34 relasi kampus-jurusan dengan daya tampung + estimasi UKT.
+   Plus nilai rapor smt 1: Matematika 92, Informatika 90, Fisika 85, Bahasa Inggris 80, Bahasa Indonesia 78, Biologi 70, Kimia 65. Fixture ini menghasilkan top-5: TI 87, Kedokteran 84, Sistem Informasi 83, Akuntansi 82, Teknik Elektro 81.
+4. Untuk tes chat tanpa menjalankan analisis manual: insert `analysis_results` + `analysis_recommendations` (pakai `major_id` asli dari tabel `majors`) — pola ini dipakai di E2E chat.
+5. Cleanup: `delete from users where email = '<email uji>'` (cascade ke jawaban, nilai, analisis, chat, action plans).
+
+Password akun yang kita buat: `password123`.
+
+**Data seed:** 24 soal (6×4 kategori, semua ber-`dimension`), 12 jurusan (semua ber-`profile`), 10 kampus (8 PTN + 2 PTS), 34 relasi kampus-jurusan dengan daya tampung + estimasi UKT.
 
 ---
 
-## 7. Cara verifikasi (pola E2E)
+## 7. Cara verifikasi (pola E2E di mesin Windows ini)
 
-```bash
-# 1. Pastikan build terbaru & server jalan
-lsof -ti:3000 | xargs kill 2>/dev/null
-npm run build && (npm run start >/tmp/terangin-server.log 2>&1 &) ; sleep 3
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000
+Aturan main: dev server user biasanya di port 3000 (jangan diganggu). Verifikasi memakai build produksi di port **3131**.
 
-# 2. Install playwright sementara
+```powershell
+# 1. Build + jalankan server verifikasi (background)
+npm run build
+$env:PORT="3131"; npm run start   # jalankan sebagai background job
+
+# readiness: loop sampai HTTP 200
+$ok=$false; for($i=0;$i -lt 30;$i++){ try { $r=Invoke-WebRequest http://localhost:3131 -UseBasicParsing -TimeoutSec 2; if($r.StatusCode -eq 200){$ok=$true;break} } catch {}; Start-Sleep -Milliseconds 500 }; if($ok){"READY"}else{"NOT READY"}
+
+# 2. Playwright sementara
 npm i -D playwright-core
 
-# 3. Jalankan skrip E2E (inline node --input-type=module)
-#    Pola: chromium.launch({ channel: "chrome", headless: true })
-#    Login pakai akun test §6, exercise flow, cek DB via psql
+# 3. Jalankan skrip E2E sebagai file .mjs (hindari inline -e; quoting PowerShell bermasalah)
+#    Pola: chromium.launch({ channel: "chrome", headless: true }) fallback "msedge"
+#    Skrip boleh langsung import postgres + @next/env untuk setup/cek DB (lihat resep §6)
+node e2e-xxx.mjs
 
-# 4. Cek DB contoh
-psql -d terangin -c "select * from analysis_recommendations r join majors m on m.id=r.major_id order by rank_order;"
+# 4. Cek DB tanpa psql (tidak ada di PATH): pakai skrip node kecil, atau jadikan bagian akhir skrip E2E
 
 # 5. Cleanup WAJIB
+Remove-Item e2e-xxx.mjs -Force
 npm uninstall playwright-core
-lsof -ti:3000 | xargs kill 2>/dev/null
+$procId = (Get-NetTCPConnection -LocalPort 3131 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess); if ($procId) { Stop-Process -Id $procId -Force }
+git checkout -- package-lock.json   # opsional: buang normalisasi lock dari npm install/uninstall
 ```
 
-**AI nyata:** chat & analisis butuh `GROQ_API_KEY` valid. Kalau tidak ada, verifikasi sampai error handling-nya saja.
+- Unit check rumus skoring: skrip `.ts` dijalankan `npx tsx unit-xxx.ts` (bungkus `async function main()` karena tsx default CJS); hapus setelah selesai.
+- Akun uji dibuat via signup UI di dalam skrip dan dihapus by email di blok `finally`; jangan tinggalkan user test.
+- **AI nyata:** chat & analisis butuh `GROQ_API_KEY` valid di `.env.local`. Kalau tidak ada, verifikasi sampai error handling-nya saja.
 
 ---
 
 ## 8. Open items / next steps
 
-1. **Fase 5: Rencana Aksi** — tabel `action_plans` sudah ada (`final_univ_major_id` FK ke `university_majors`, `roadmap_json`, `confidence_score` 1–100, `status` DRAFT/FINALIZED). Yang perlu dibangun: UI memilih 1–3 jurusan final dari rekomendasi, generate roadmap persiapan (AI, simpan ke `roadmap_json`), evaluasi keyakinan (slider/kuis singkat → `confidence_score`), finalize.
-2. **Fase 6: Hasil Akhir** — halaman ringkasan dokumen personal (analisis + dialog + roadmap), tombol unduh (PDF/print) & bagikan ke orang tua/guru BK.
-3. **Chat lanjutan** — multi-sesi (list sesi + judul), pagination riwayat (>50 pesan), mungkin regenerate/retry per pesan.
-4. **Opsional (dari PRD)** — integrasi Tavily untuk data kampus live; faktor ekonomi wilayah; beasiswa terstruktur.
-5. **Opsional teknis** — `not-found.tsx` & `error.tsx` kustom, rate limiting chat/analisis, halaman pengaturan akun, `proxy.ts` (middleware) untuk proteksi route (saat ini guard ada di masing-masing page).
-6. **Deployment** — Vercel: set env (`DATABASE_URL` cloud seperti Neon, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan), `db:push` ke DB cloud sebelum deploy.
+1. **Commit sisa perubahan** — analisis deterministik (§3.13/§3.14) masih uncommitted; saran pesan: "feat: analisis deterministik (skor berbobot + panel dasar penilaian)".
+2. **Review kurasi data skoring** — tag 24 dimensi soal (`db/seed.ts`) & profil 12 jurusan (`db/seed-colleges.ts`) adalah kurasi awal; sesuaikan lalu jalankan `npm run db:seed` + `npm run db:seed-colleges` (jalur update non-destruktif) dan ulangi unit check.
+3. **Fase 5: Rencana Aksi** — tabel `action_plans` sudah ada (`final_univ_major_id` FK ke `university_majors`, `roadmap_json`, `confidence_score` 1–100, `status` DRAFT/FINALIZED). Yang perlu dibangun: UI memilih 1–3 jurusan final dari rekomendasi, generate roadmap persiapan (AI, simpan ke `roadmap_json`), evaluasi keyakinan (slider/kuis singkat → `confidence_score`), finalize.
+4. **Fase 6: Hasil Akhir** — halaman ringkasan dokumen personal (analisis + dialog + roadmap), tombol unduh (PDF/print) & bagikan ke orang tua/guru BK.
+5. **Chat lanjutan** — multi-sesi (list sesi + judul), pagination riwayat (>50 pesan), mungkin regenerate/retry per pesan.
+6. **Opsional (dari PRD)** — integrasi Tavily untuk data kampus live; faktor ekonomi wilayah; beasiswa terstruktur.
+7. **Opsional teknis** — `not-found.tsx` & `error.tsx` kustom, rate limiting chat/analisis, halaman pengaturan akun, `proxy.ts` (middleware) untuk proteksi route (saat ini guard ada di masing-masing page).
+8. **Stabilitas skoring (opsional)** — saat ini 1 soal per dimensi (RIASEC/aptitude/kepribadian/gaya belajar); menambah soal per dimensi akan membuat skor lebih stabil.
+9. **Deployment** — Vercel: set env (`DATABASE_URL` cloud seperti Neon, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan), `db:push` ke DB cloud sebelum deploy.
 
 ---
 

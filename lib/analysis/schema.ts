@@ -16,18 +16,20 @@ export function buildAnalysisSchema(majorIds: [string, ...string[]]) {
       .describe(
         "Catatan keselarasan antara minat awal saat onboarding dan hasil asesmen",
       ),
-    recommendations: z.array(
-      z.object({
-        majorId: z.enum(majorIds),
-        matchPercentage: z
-          .number()
-          .describe("Persentase kecocokan realistis antara 40 sampai 97"),
-        rankOrder: z.number().describe("Urutan rekomendasi mulai dari 1"),
-        reason: z
-          .string()
-          .describe("Alasan 2 sampai 3 kalimat yang menyebut data spesifik"),
-      }),
-    ),
+    recommendations: z
+      .array(
+        z.object({
+          majorId: z.enum(majorIds),
+          reason: z
+            .string()
+            .describe(
+              "Alasan 2 sampai 3 kalimat yang menyebut sub-skor faktor atau data spesifik",
+            ),
+        }),
+      )
+      .describe(
+        "Satu alasan untuk tiap jurusan pada daftar peringkat, urutan tidak diubah",
+      ),
   });
 }
 
