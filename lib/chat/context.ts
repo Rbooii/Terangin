@@ -129,16 +129,20 @@ export async function getUserChatContext(userId: string): Promise<string> {
       if (campuses.length === 0) return null;
       const campusText = campuses
         .map((campus) => {
-          const parts = [campus.universityName];
-          if (campus.location) parts.push(campus.location);
-          if (campus.type) parts.push(campus.type);
-          if (campus.capacity) parts.push(`daya tampung sekitar ${campus.capacity}`);
+          const meta = [campus.location, campus.type].filter(Boolean).join(", ");
+          const name = meta
+            ? `${campus.universityName} (${meta})`
+            : campus.universityName;
+          const details: string[] = [];
+          if (campus.capacity)
+            details.push(`daya tampung sekitar ${campus.capacity}`);
           const tuition = formatTuition(campus.estimatedTuition);
-          if (tuition) parts.push(`UKT ${tuition}`);
-          return `${parts[0]} (${parts.slice(1).join(", ")})`;
+          if (tuition) details.push(`UKT ${tuition}`);
+          const detailText = details.length > 0 ? `: ${details.join(", ")}` : "";
+          return `  - ${name}${detailText}`;
         })
-        .join("; ");
-      return `- ${major.name}: ${campusText}`;
+        .join("\n");
+      return `- ${major.name}:\n${campusText}`;
     })
     .filter(Boolean)
     .join("\n");

@@ -7,6 +7,12 @@ import {
   saveGradeAction,
 } from "@/lib/actions/grades";
 import { TrashIcon } from "@/components/landing/icons";
+import {
+  MIN_SUBJECTS_PER_SEMESTER,
+  formatShortfallMessage,
+  getRequiredSemesters,
+  getSemesterShortfalls,
+} from "@/lib/grades";
 
 type GradeRow = {
   key: string;
@@ -92,6 +98,25 @@ export default function GradeInput({
   const semesterRows = rows.filter((row) => row.semester === activeSemester);
   const persistedCount = semesterRows.filter((row) => row.persisted).length;
   const totalPersisted = rows.filter((row) => row.persisted).length;
+
+  const persistedBySemester = new Map<number, number>();
+  for (const row of rows) {
+    if (!row.persisted) continue;
+    persistedBySemester.set(
+      row.semester,
+      (persistedBySemester.get(row.semester) ?? 0) + 1,
+    );
+  }
+  const requiredSemesters = getRequiredSemesters(
+    defaultSemesters,
+    [...persistedBySemester.keys()],
+  );
+  const shortfalls = getSemesterShortfalls(
+    requiredSemesters,
+    persistedBySemester,
+  );
+  const requirementMet = shortfalls.length === 0;
+  const activeIsRequired = requiredSemesters.includes(activeSemester);
 
   const semesterOneSubjects = Array.from(
     new Set(
@@ -379,17 +404,26 @@ export default function GradeInput({
           <h2 className="text-[15px] font-medium text-white">
             Semester {activeSemester}
           </h2>
-          <span className="text-[11px] text-zinc-500">
-            {persistedCount > 0
+          <span
+            className={
+              activeIsRequired && persistedCount < MIN_SUBJECTS_PER_SEMESTER
+                ? "text-[11px] text-amber-300/80"
+                : "text-[11px] text-zinc-500"
+            }
+          >
+            {persistedCount >= MIN_SUBJECTS_PER_SEMESTER
               ? `${persistedCount} mapel tersimpan`
-              : "Belum ada nilai"}
+              : activeIsRequired
+                ? `${persistedCount} dari ${MIN_SUBJECTS_PER_SEMESTER} mapel`
+                : "Belum ada nilai"}
           </span>
         </div>
 
         <div className="mt-5 space-y-2.5">
           {semesterRows.length === 0 && ghostSubjects.length === 0 && (
             <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-[12px] text-zinc-500">
-              Belum ada mapel di semester ini. Tambahin lewat chip di bawah.
+              Belum ada mapel di semester ini. Tambahin lewat chip di bawah,
+              minimal 7 mapel per semester.
             </p>
           )}
 
@@ -559,6 +593,11 @@ export default function GradeInput({
             : "Belum ada nilai tersimpan"}
         </span>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {!completed && !requirementMet && (
+            <span className="max-w-sm text-[12px] leading-relaxed text-amber-300/80">
+              {formatShortfallMessage(shortfalls)}
+            </span>
+          )}
           {finishError && (
             <span className="text-[12px] text-red-400">{finishError}</span>
           )}
@@ -573,7 +612,7 @@ export default function GradeInput({
             <button
               type="button"
               onClick={handleFinish}
-              disabled={totalPersisted === 0 || finishing}
+              disabled={!requirementMet || finishing}
               className="h-10 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {finishing ? "Menyimpan..." : "Selesai"}

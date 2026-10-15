@@ -11,7 +11,8 @@ Terang.in adalah aplikasi **Next.js 16 (App Router)** full-stack satu repo: land
 ```
 Browser
   │
-  ├─► Landing "/" (PPR: shell static + AuthNav di-stream via Suspense)
+  ├─► Halaman publik (dynamic): "/", "/login", "/signup"
+  │     sudah login → redirect /dashboard
   │
   ├─► Halaman app ber-guard (dynamic, instant=false):
   │     /onboarding → /dashboard → /assessment → /nilai → /analisis → /chat
@@ -68,8 +69,8 @@ PostgreSQL (Drizzle ORM + postgres.js)
 
 | Route | Tipe | Guard / Catatan |
 |-------|------|-----------------|
-| `/` | ◐ PPR | Shell statis; `AuthNav` (baca session) di balik `<Suspense>` dengan fallback `AuthButtons` |
-| `/login`, `/signup` | ○ Static | Form client (`useActionState`) → server actions |
+| `/` | ƒ Dynamic | `instant = false`; sudah login → redirect `/dashboard`; shell + `AuthNav` di balik `<Suspense>` dengan fallback `AuthButtons` |
+| `/login`, `/signup` | ƒ Dynamic | `instant = false`; sudah login → redirect `/dashboard`; form client (`useActionState`) → server actions |
 | `/onboarding` | ƒ Dynamic | `instant = false` + `connection()`; auth → profile → redirect `/dashboard` jika sudah selesai |
 | `/dashboard` | ƒ Dynamic | + redirect `/onboarding` jika onboarding belum selesai |
 | `/assessment` | ƒ Dynamic | + redirect `/onboarding`; jika sudah selesai tampilkan completed view |
@@ -241,6 +242,7 @@ terangin/
 │   └── profile/ProfileForm.tsx                  # Edit profil + chips minat
 ├── lib/
 │   ├── validation.ts           # Semua schema zod (lihat §7.5)
+│   ├── grades.ts               # MIN_SUBJECTS_PER_SEMESTER, defaultSemestersFor, helper shortfall (lihat §7.2)
 │   ├── onboarding.ts           # getUserProfile, getJourneySteps, tipe JourneyStep
 │   ├── actions/
 │   │   ├── auth.ts             # registerAction, loginAction, logoutAction
@@ -254,9 +256,10 @@ terangin/
 │   │   ├── prompt.ts           # buildSystemPrompt(), buildUserPrompt(data)
 │   │   └── schema.ts           # buildAnalysisSchema(majorIds) → zod Output.object
 │   └── chat/
-│       ├── context.ts          # getUserChatContext(userId): string konteks personal + katalog kampus
-│       ├── prompt.ts           # buildChatSystemPrompt(context)
-│       └── messages.ts         # rowToUIMessage(row), extractMessageText(uiMessage)
+│       ├── context.ts          # getUserChatContext(userId): konteks personal + katalog kampus (satu kampus per baris)
+│       ├── prompt.ts           # buildChatSystemPrompt(context): 5 blok (cakupan, curhat, pegangan cerita, data, gaya)
+│       ├── messages.ts         # rowToUIMessage(row), extractMessageText(uiMessage)
+│       └── text.ts             # sanitizeChatText: karakter tipografis non-ASCII jadi padanan standar
 ├── db/
 │   ├── schema.ts · index.ts · seed.ts · seed-colleges.ts
 │   └── migrations/             # SQL migrasi versioned + meta/_journal.json (di-commit)
@@ -279,6 +282,7 @@ State: `semesters: number[]`, `activeSemester`, `rows: GradeRow[]` (`{ key, subj
 - Derivasi superset: `semesterOneSubjects` (dari rows smt 1 persisted) → `ghostSubjects` untuk semester aktif (n≥2) = mapel smt 1 yang belum persisted di n dan belum dismissed → dirender sebagai baris saran (input dashed + tombol "Lewati").
 - `saveRow` (upsert via `saveGradeAction`; validasi 0–100 + duplikat case-insensitive), `saveGhost` (sukses → materialize jadi row persisted + flash "Tersimpan"), `removeRow` (persisted → `deleteGradeAction` + auto-dismiss saran), `addRow`, `addSemester` (cap 5).
 - Chip "Tambah cepat" = gabungan mapel smt 1 + preset, difilter terhadap baris/saran yang sedang tampil; `datalist` untuk saran nama.
+- Aturan minimal: semester wajib = default kelas ∪ semester yang sudah punya nilai (semester tambahan kosong tidak wajib). `shortfalls` dihitung dari helper `lib/grades.ts`; tombol "Selesai" disabled selama ada semester <7, header kartu menampilkan "n/7" (amber saat kurang), footer menampilkan daftar shortfall.
 
 ### 7.3 `components/analysis/AnalysisPanel.tsx`
 Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` (idle/running/error), `stage` (0–3, interval 2,2 dtk), `error`.
@@ -311,7 +315,7 @@ Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` 
 | `restartAssessmentAction` | assessment | — | hapus semua jawaban + reset flag → redirect `/assessment` |
 | `saveGradeAction` | grades | `{subject, semester, score}` | upsert nilai → `{ok}` |
 | `deleteGradeAction` | grades | `{subject, semester}` | hapus baris → `{ok}` |
-| `completeGradesAction` | grades | — | validasi ≥1 record → set flag → redirect `/dashboard` |
+| `completeGradesAction` | grades | — | validasi tiap semester wajib ≥7 mapel (default kelas ∪ semester terisi) → set flag → redirect `/dashboard`; `{ok:false,error}` berisi shortfall bila kurang |
 | `updateProfileAction` | profile | FormData | update nama/sekolah/kelas/minat → `{ok}` (indikator "Tersimpan") |
 | `restartTourAction` | profile | — | reset `onboarding_completed_at` → redirect `/onboarding` |
 | `runAnalysisAction` | analysis | — | pipeline AI + persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
@@ -348,10 +352,11 @@ Alur POST:
 1. `auth()` → 401; parse `{ messages: UIMessage[] }`; ambil pesan user terakhir → teks (cap 2000 char).
 2. Cari/buat `chat_sessions` (satu per user) → insert pesan USER ke `chat_messages`.
 3. Ambil 60 pesan terakhir (desc lalu di-sort asc) → map `rowToUIMessage` → history.
-4. `getUserChatContext(userId)` (prepare + analysis + rekomendasi + katalog kampus terformat) → `buildChatSystemPrompt` (9 aturan: santai-hangat, tanpa emoji/em dash, wajib cek katalog sebelum bilang data tidak ada, tidak mengarang, arahkan topik, markdown secukupnya).
-5. `streamText({ model: groq("openai/gpt-oss-120b"), system, messages: await convertToModelMessages(history), temperature: 0.7, providerOptions: { groq: { reasoningEffort: "medium" } } })`.
+4. `getUserChatContext(userId)` (prepare + analysis + rekomendasi + katalog kampus, satu kampus per baris) → `buildChatSystemPrompt` (5 blok: PERAN DAN CAKUPAN dengan daftar out-of-scope + formula penolakan, CARA MENANGGAPI CURHAT termasuk batas krisis, PEGANGAN SAAT USER BERCERITA, SUMBER DATA dengan aturan salin angka persis, GAYA BAHASA tanpa emoji/karakter non-standar).
+5. `streamText({ model: groq("openai/gpt-oss-120b"), system, messages: await convertToModelMessages(history), temperature: 0.7, providerOptions: { groq: { reasoningEffort: "high" } } })`.
 6. `createUIMessageStreamResponse({ stream: toUIMessageStream({ stream, originalMessages: history, onFinish: persist pesan AI }) })`.
 - `export const maxDuration = 60`.
+- Balasan AI disanitasi `sanitizeChatText` (em dash, en dash, non-breaking hyphen/space → ASCII) di `onFinish` (persist) dan di `ChatPanel` (render).
 - Client: `useChat` + `DefaultChatTransport` (default body = seluruh messages; server hanya memakai yang terakhir + rebuild history dari DB — sumber kebenaran riwayat adalah DB).
 
 **Batasan Groq yang penting:** Structured Outputs (strict) **tidak mendukung streaming** → analisis non-streaming dengan progress UI; chat teks biasa streaming normal.
