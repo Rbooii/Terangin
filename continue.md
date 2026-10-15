@@ -55,7 +55,8 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 
 ### 3.3 Database & schema
 - PostgreSQL 18 lokal via Homebrew (`createdb terangin`, user `arcozkwn`, tanpa password). `DATABASE_URL=postgresql://arcozkwn@localhost:5432/terangin`.
-- Drizzle ORM + `postgres.js` driver. Workflow memakai **`db:push`** (bukan generate/migrate). Semua perubahan schema additive & aman.
+- Drizzle ORM + `postgres.js` driver. Workflow sekarang memakai **versioned migrations** (`db:generate` + `db:migrate`, file di `db/migrations/` di-commit). `db:push` tinggal untuk prototyping lokal.
+- DB lokal (`terangin`) sudah di-baseline (`drizzle.__drizzle_migrations` berisi 0000), jadi `db:migrate` aman dan no-op sampai ada migrasi baru.
 - Seluruh 12 tabel PRD dibuat, plus kolom/constraint tambahan (lihat `architecture.md` §5).
 
 ### 3.4 Onboarding (Fase 1)
@@ -140,6 +141,7 @@ Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system p
 - Transaksi: `db.transaction(async (tx) => {...})` (dipakai di persist analisis).
 - `decimal` dibaca sebagai string dari DB — konversi dengan `Number()` saat menampilkan/menghitung.
 - Seeding idempotent: skip kalau tabel sudah terisi; `--force` untuk isi ulang (dengan peringatan cascade).
+- Migrasi: `drizzle-kit generate` menulis `db/migrations/` (SQL + snapshot + journal) yang wajib di-commit. `scripts/migrate.ts` membaca file itu dan mencatat hash sha256 + timestamp di `drizzle.__drizzle_migrations`; migrasi di-skip kalau `created_at` terakhir >= `when` di journal. **Jangan edit file migrasi yang sudah teraplikasi** (hash berubah dan migrasi baru bisa terlewat). DB yang sudah terisi schema harus di-baseline sekali (`scripts/baseline.ts`) supaya `migrate` tidak mencoba membuat ulang tabel.
 
 ### 4.7 Auth.js
 - `trustHost: true` wajib (production mode lokal).
@@ -168,11 +170,15 @@ GROQ_API_KEY=gsk_...
 **Script npm:**
 ```
 npm run dev / build / start / lint
-npm run db:push            # sync schema ke DB (workflow utama)
-npm run db:generate / db:migrate / db:studio   # tersedia, tidak dipakai
+npm run db:generate        # buat migrasi baru dari perubahan db/schema.ts (commit hasilnya)
+npm run db:migrate         # terapkan migrasi (tsx scripts/migrate.ts)
+npm run db:baseline        # tandai migrasi existing applied tanpa dijalankan (sekali, untuk DB lama)
+npm run db:push            # sync schema langsung, hanya prototyping lokal
 npm run db:seed            # 24 soal asesmen (idempotent, --force untuk ulang)
 npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent, --force)
 ```
+
+**Pipeline DB production (Vercel):** `package.json` punya script `vercel-build` = `tsx scripts/migrate.ts && next build`. Vercel otomatis memakainya, sehingga setiap deploy menjalankan migrasi dulu sebelum kode baru melayani traffic. `scripts/migrate.ts` hanya jalan saat `VERCEL_ENV=production` (preview di-skip; override `FORCE_MIGRATE=1`). Prod DB yang sudah terisi schema cukup di-baseline sekali: `DATABASE_URL=<prod> npm run db:baseline`. Jangan pernah mengedit file migrasi yang sudah teraplikasi (hash sha256 file dipakai sebagai penanda di `drizzle.__drizzle_migrations`).
 
 **Alur dev:** `npm run dev` → http://localhost:3000. Untuk verifikasi produksi: `npm run build && npm run start`.
 
@@ -234,7 +240,7 @@ lsof -ti:3000 | xargs kill 2>/dev/null
 3. **Chat lanjutan** — multi-sesi (list sesi + judul), pagination riwayat (>50 pesan), mungkin regenerate/retry per pesan.
 4. **Opsional (dari PRD)** — integrasi Tavily untuk data kampus live; faktor ekonomi wilayah; beasiswa terstruktur.
 5. **Opsional teknis** — `not-found.tsx` & `error.tsx` kustom, rate limiting chat/analisis, halaman pengaturan akun, `proxy.ts` (middleware) untuk proteksi route (saat ini guard ada di masing-masing page).
-6. **Deployment** — Vercel: set env (`DATABASE_URL` cloud seperti Neon, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan), `db:push` ke DB cloud sebelum deploy.
+6. **Deployment** — Vercel: set env Production (`DATABASE_URL` cloud seperti Neon pakai URL direct/unpooled untuk migrasi, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan). Migrasi otomatis via `vercel-build` → cukup baseline prod sekali (`DATABASE_URL=<prod> npm run db:baseline`) lalu push. Cek hasil: `select * from drizzle.__drizzle_migrations`.
 
 ---
 

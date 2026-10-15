@@ -44,10 +44,12 @@ npm install
 
 ```bash
 createdb terangin
-npm run db:push
+npm run db:migrate         # terapkan schema dari db/migrations
 npm run db:seed            # 24 soal asesmen
 npm run db:seed-colleges   # 12 jurusan, 10 kampus, 34 relasi (daya tampung + estimasi UKT)
 ```
+
+Kalau database sudah terisi schema (mis. hasil `db:push` lama) dan belum punya riwayat migrasi, jalankan `npm run db:baseline` sekali agar migrasi awal ditandai sudah diterapkan tanpa dijalankan ulang.
 
 3. Buat `.env.local`:
 
@@ -70,10 +72,24 @@ Buka http://localhost:3000.
 | Perintah | Fungsi |
 |----------|--------|
 | `npm run dev` / `build` / `start` / `lint` | Next.js standar |
-| `npm run db:push` | Sync schema Drizzle ke database |
+| `npm run db:generate` | Buat file migrasi baru dari perubahan `db/schema.ts` (wajib di-commit) |
+| `npm run db:migrate` | Terapkan migrasi yang belum dijalankan ke database |
+| `npm run db:baseline` | Tandai migrasi existing sebagai sudah diterapkan (sekali saja, untuk DB yang sudah terisi schema) |
+| `npm run db:push` | Sync schema langsung ke database lokal (hanya untuk prototyping) |
 | `npm run db:seed` | Seed bank soal asesmen (idempotent, tambah `--force` untuk isi ulang) |
 | `npm run db:seed-colleges` | Seed data jurusan dan kampus (idempotent) |
 | `npm run db:studio` | Drizzle Studio |
+
+## Deployment (Vercel)
+
+Production DB ikut ter-migrasi otomatis setiap deploy lewat script `vercel-build` (`tsx scripts/migrate.ts && next build`), jadi kode baru tidak pernah jalan sebelum schema-nya siap.
+
+1. Set environment variables di Vercel untuk Production: `DATABASE_URL` (pakai URL direct/unpooled kalau provider memakai connection pooler, mis. Neon), `AUTH_SECRET`, `GROQ_API_KEY`.
+2. Baseline sekali kalau production DB sudah terisi schema: `DATABASE_URL=<url-prod> npm run db:baseline`.
+3. Push ke branch production. Build Vercel otomatis menjalankan migrasi dulu, lalu build. Migrasi yang sudah teraplikasi akan di-skip (aman diulang).
+4. Preview deployment tidak menyentuh DB (guard `VERCEL_ENV`); paksa dengan `FORCE_MIGRATE=1` bila preview memakai database terpisah.
+
+Alur perubahan schema: `npm run db:generate` → review file SQL di `db/migrations/` → commit → push. Jangan mengedit file migrasi yang sudah pernah diterapkan karena hash-nya dipakai sebagai penanda.
 
 ## Alur Produk
 
