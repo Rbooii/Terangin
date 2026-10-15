@@ -1,10 +1,17 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { academicRecords, users } from "@/db/schema";
+import {
+  defaultSemestersFor,
+  formatShortfallMessage,
+  getRequiredSemesters,
+  getSemesterShortfalls,
+} from "@/lib/grades";
+import { getUserProfile } from "@/lib/onboarding";
 import { gradeDeleteSchema, gradeSchema } from "@/lib/validation";
 
 export type GradeActionResult = { ok: boolean; error?: string };
@@ -83,17 +90,34 @@ export async function completeGradesAction(): Promise<CompleteGradesResult> {
     redirect("/login");
   }
 
-  const [existing] = await db
-    .select({ id: academicRecords.id })
-    .from(academicRecords)
-    .where(eq(academicRecords.userId, session.user.id))
-    .limit(1);
-
-  if (!existing) {
+  const profile = await getUserProfile(session.user.id);
+  if (!profile) {
     return {
       ok: false,
-      error: "Isi minimal satu nilai dulu ya sebelum tandai selesai.",
+      error: "Profil kamu nggak ketemu. Coba muat ulang halaman ini.",
     };
+  }
+
+  const grouped = await db
+    .select({
+      semester: academicRecords.semester,
+      total: count(),
+    })
+    .from(academicRecords)
+    .where(eq(academicRecords.userId, session.user.id))
+    .groupBy(academicRecords.semester);
+
+  const countBySemester = new Map(
+    grouped.map((row) => [row.semester, Number(row.total)]),
+  );
+  const requiredSemesters = getRequiredSemesters(
+    defaultSemestersFor(profile.gradeLevel),
+    grouped.map((row) => row.semester),
+  );
+  const shortfalls = getSemesterShortfalls(requiredSemesters, countBySemester);
+
+  if (shortfalls.length > 0) {
+    return { ok: false, error: formatShortfallMessage(shortfalls) };
   }
 
   await db

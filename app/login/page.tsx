@@ -1,14 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import { auth } from "@/auth";
 import LoginForm from "@/components/auth/LoginForm";
 import { TeraMark } from "@/components/landing/TeraMark";
+
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Masuk ke Terang.in",
   description: "Masuk ke akun Terang.in dan lanjut ngobrol sama Tera.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  await connection();
+  const session = await auth();
+  if (session?.user?.id) {
+    redirect("/dashboard");
+  }
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">

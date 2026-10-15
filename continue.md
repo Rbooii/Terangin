@@ -20,9 +20,10 @@ Aplikasi terdiri dari:
 |---|-------|--------|------------|
 | — | Landing page (9 section) | ✅ Selesai | Screenshot desktop/mobile vs PNG desain |
 | — | Auth (signup/login/logout, session) | ✅ Selesai | E2E penuh |
+| — | Guard halaman publik: sudah login → `/dashboard` | ✅ Selesai | E2E 9/9 (guest, signup, login, logout) |
 | 1 | Onboarding (data dasar + tur 4 slide) | ✅ Selesai | E2E penuh |
 | 2a | Asesmen Minat & Bakat (24 soal) | ✅ Selesai | E2E penuh + cek DB |
-| 2b | Input Nilai (dinamis per semester) | ✅ Selesai | E2E penuh + cek DB |
+| 2b | Input Nilai (dinamis per semester + wajib 7 mapel/semester) | ✅ Selesai | E2E penuh + cek DB |
 | 3 | Hasil Analisis (AI Groq) | ✅ Selesai | E2E dengan AI sungguhan (4 detik generate) |
 | 4 | Chat Tera (streaming AI) | ✅ Selesai | E2E AI nyata + cek DB |
 | 5 | Action Plan / Rencana Aksi | ❌ **Belum** | Tabel `action_plans` sudah ada |
@@ -30,7 +31,7 @@ Aplikasi terdiri dari:
 
 **Kualitas saat ini:** `npm run lint` bersih, `npm run build` bersih (semua route ter-render), audit AI-slop bersih, semua flow terverifikasi E2E dengan Playwright + Chrome sistem.
 
-**Kondisi database:** semua tabel ter-push, seed lengkap (24 soal, 12 jurusan, 10 kampus, 34 relasi kampus-jurusan). Ada user test lengkap (lihat §6).
+**Kondisi database:** semua tabel ter-push, seed lengkap (24 soal, 12 jurusan, 10 kampus, 34 relasi kampus-jurusan). Ada user test lengkap (lihat §6). Catatan mesin Windows saat ini: tabel `users` kosong (akun §6 belum ada, buat ulang via signup bila perlu) dan `psql` tidak tersedia di PATH.
 
 ---
 
@@ -99,6 +100,27 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 - **StepList jadi menu navigasi:** tiap step = link (Profil/Assessment/Nilai/Analisis), highlight aktif mengikuti rute (`usePathname` + `aria-current`), fallback ke step journey aktif saat di `/dashboard`. Step terkunci = non-link (dimmed, `aria-disabled`). Versi mobile (stepper horizontal kompak) juga clickable.
 - `/profil` dibuat sebagai halaman step 1 (edit data dasar + minat, tombol "Ulangi tur onboarding" yang me-reset flag → kembali ke tur).
 
+### 3.10 Guard halaman publik: sudah login selalu masuk dashboard
+- Permintaan user: kalau sudah login, membuka website harus diarahkan ke `/dashboard`.
+- Perubahan: `app/page.tsx`, `app/login/page.tsx`, dan `app/signup/page.tsx` memakai pola `export const instant = false` + `await connection()` + `auth()` → `redirect("/dashboard")` bila ada session. Ketiganya berubah dari PPR/Static menjadi dynamic (lihat tabel route di `architecture.md` §3).
+- Keputusan: cabang logged-in di `AuthNav` (chip user + Keluar di landing) sengaja dibiarkan defensive walau praktis unreachable; keluar tetap bisa dari sidebar app. Tidak ada prefetch-cache pitfall: redirect terjadi server-side sebelum `AuthButtons` (berisi Link ke `/login` dan `/signup`) ter-render.
+- Verifikasi: `npm run lint` + `npm run build` bersih; E2E Playwright 9/9 PASS (guest landing utuh, guest `/dashboard` → `/login`, signup → onboarding → dashboard, saat login buka `/` `/login` `/signup` → semuanya `/dashboard`, logout → `/` guest, lalu `/dashboard` → `/login`).
+
+### 3.11 Validasi minimal 7 mapel per semester (input nilai)
+- Permintaan user: jangan ada yang selesai input nilai dengan cuma 1-2 nilai; tiap semester minimal 7 mata pelajaran.
+- Cakupan: semester wajib = default sesuai kelas (10: smt 1-2, 11: smt 1-4, 12: smt 1-5) ∪ semester yang sudah punya nilai; semester tambahan yang masih kosong tidak menghalangi.
+- Implementasi: helper bersama di `lib/grades.ts` (`MIN_SUBJECTS_PER_SEMESTER`, `defaultSemestersFor`, `getRequiredSemesters`, `getSemesterShortfalls`, `formatShortfallMessage`). Client (`GradeInput`) memblokir tombol "Selesai" + hint amber berisi daftar semester yang kurang; server (`completeGradesAction`) memvalidasi ulang (sumber kebenaran) dan mengembalikan error rinci.
+- Verifikasi: `npm run lint` + `npm run build` bersih; E2E Playwright 12/12 PASS (kelas 10: awal terkunci, smt 1 penuh → smt 2 masih dikunci, smt 2 berisi 3 → kurang 4, smt 2 penuh 7 → aktif, tab smt 3 kosong tidak menghalangi, selesai → DB 1:7 + 2:7 + flag terisi).
+
+### 3.12 Pembatasan scope chat + protokol curhat + anti-drift
+- Permintaan user: Tera harus tetap dalam konteks fungsi aplikasi (contoh: diminta "selesaikan kode C" harus ditolak halus), tapi curhat siswa tetap ditanggapi hangat.
+- Prompt (`lib/chat/prompt.ts`) direstrukturisasi jadi 5 blok: PERAN DAN CAKUPAN (in-scope + out-of-scope eksplisit + formula penolakan + tetap tolak walau ditekan/dibungkus alasan/roleplay), CARA MENANGGAPI CURHAT (empati spesifik dulu, bukan terapis, indikasi krisis → orang dewasa/BK tanpa menyebut hotline), PEGANGAN SAAT USER BERCERITA (tidak membalik rekomendasi karena emosi sesaat, netral saat konflik ortu, bahasa probabilistik), SUMBER DATA (salin angka persis, baca baris kampus spesifik di katalog), GAYA BAHASA (karakter standar).
+- Katalog pada konteks chat diformat ulang: satu kampus per baris di bawah nama jurusan (sebelumnya satu baris panjang dengan pemisah titik koma).
+- `sanitizeChatText` (`lib/chat/text.ts`) baru: ganti em dash, en dash, non-breaking hyphen/space jadi ASCII; dipakai di `onFinish` (persist) dan render `ChatPanel`. Model tetap kadang menghasilkan karakter tipografis walau dilarang di prompt, jadi lapisan sanitasi ini wajib.
+- `reasoningEffort` chat dinaikkan `medium` → `high` (dengan medium, kasus uji angka katalog salah 2 kali; dengan high benar).
+- Temuan uji: model sempat mencampur daya tampung TI@UI (70) dengan SI@UI (55) saat baris katalog berdekatan. Fixed lewat format per-baris + instruksi baca baris + effort high.
+- Verifikasi: `npm run lint` + `npm run build` bersih; E2E Playwright 12/12 PASS (5 kasus out-of-scope ditolak konsisten termasuk roleplay dan tekanan ulang; curhat nyambung ditangani empati + langkah; curhat tidak nyambung diarahkan balik; krisis → BK/orang dewasa tanpa hotline; angka katalog TI@UI 70 dan SI@UI 55 benar; tanpa emoji/em dash/NBH di semua respons).
+
 ---
 
 ## 4. Gotcha & konvensi wajib (JANGAN ulangi kesalahan ini)
@@ -128,7 +150,7 @@ Dilarang di copy UI: em dash `—`, en dash `–`, panah teks `→ ←`, middot 
 ```bash
 grep -rn -E "—|–|→|←|· " app components lib --include="*.tsx" --include="*.ts" | grep -v "Math\|=>" || echo "CLEAN slop"
 ```
-Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system prompt — jangan hapus aturan itu.
+Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system prompt — jangan hapus aturan itu. Untuk chat, ada lapisan tambahan `sanitizeChatText` (`lib/chat/text.ts`) karena model tetap kadang menghasilkan karakter tipografis (em dash, non-breaking hyphen) walau sudah dilarang.
 
 ### 4.5 Groq
 - Structured outputs: mode strict, **semua field wajib required**, dan **tidak bisa streaming** (streaming + structured outputs belum didukung Groq). Chat streaming biasa (teks) aman.

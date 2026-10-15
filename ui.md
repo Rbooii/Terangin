@@ -191,8 +191,8 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 
 ### 6.6 Input Nilai `/nilai`
 - Header + banner hijau (jika sudah selesai) + **chip semester** (Semester 1..n, aktif putih, "+ Semester" dashed, cap 5).
-- Kartu semester: judul "Semester N" + counter "X mapel tersimpan" → baris mapel (label/input mapel + input nilai + tombol trash; sub-line status) → **baris saran** "Saran dari Semester 1" (mapel redup dashed + input nilai dashed + tombol "Lewati") → "Tambah cepat" chips → tombol dashed "Tambah mata pelajaran".
-- Footer: counter total + tombol "Selesai" (primary) / "Kembali ke dashboard".
+- Kartu semester: judul "Semester N" + counter "X dari 7 mapel" (amber-300/80 saat kurang, jadi "X mapel tersimpan" saat cukup) → baris mapel (label/input mapel + input nilai + tombol trash; sub-line status) → **baris saran** "Saran dari Semester 1" (mapel redup dashed + input nilai dashed + tombol "Lewati") → "Tambah cepat" chips → tombol dashed "Tambah mata pelajaran".
+- Footer: counter total + hint amber "Tiap semester minimal 7 mata pelajaran. Semester n kurang m mapel." + tombol "Selesai" (primary; disabled sampai semua semester wajib, yaitu default kelas + semester yang sudah ada isinya, punya ≥7 mapel) / "Kembali ke dashboard".
 
 ### 6.7 Hasil Analisis `/analisis`
 - **Intro:** kartu "Analisis siap dijalankan" + TeraMark + chip data (jawaban asesmen, mapel/semester, minat) + tombol "Mulai analisis".
