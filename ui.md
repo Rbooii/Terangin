@@ -146,11 +146,13 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 ### 5.1 Sidebar (desktop, `md:` ke atas)
 - `w-72 shrink-0 border-r border-white/6 p-5`, fixed tinggi viewport dengan scroll internal.
 - Urutan dari atas: logo `Terang.in` (TeraMark size-4 + wordmark, link `/dashboard`) → **StepList** (menu 4 langkah, `mt-8`) → blok bawah (`mt-auto space-y-3 pt-10`): **ChatMenuCard** → **chip user** (avatar inisial `size-9 rounded-full bg-white text-black` + nama + "Siswa SMA") → tombol **Keluar** (outline, full width).
-- **StepList (menu navigasi):** tiap item = Link (jika state done/active) dengan nomor kotak `size-9 rounded-lg` — aktif: `bg-white text-black` + kartu elevated `border-white/12 bg-[#1e1e1e]`; non-aktif: `bg-white/6 text-zinc-400` + hover `bg-white/4`; terkunci: `opacity-60 cursor-not-allowed` tanpa link. Sub-label status: Done (dot hijau) / Not yet Completed. Highlight mengikuti rute (`usePathname`, `aria-current="page"`), fallback step journey aktif. Connector line vertikal `absolute left-8 w-px bg-white/10`.
+- **StepList (menu navigasi):** tiap item = Link (jika state done/active) dengan nomor kotak `size-9 rounded-lg` — aktif: `bg-white text-black` + kartu elevated `bg-[#1e1e1e] shadow-[0_0_0_1px_rgba(255,255,255,0.12)]` (ring via shadow, bukan border, agar tinggi row tetap 60px dan posisi garis tetap presisi); non-aktif: `bg-[#161616] text-zinc-400` (opak, bukan `bg-white/6`, agar garis progress tidak tembus di belakang angka) + hover `bg-white/4`; terkunci: `opacity-60 cursor-not-allowed` tanpa link. Sub-label status: Done (dot hijau) / Not yet Completed. Highlight mengikuti rute (`usePathname`, `aria-current="page"`), fallback step journey aktif.
+- **Sweep outline step aktif (desktop + mobile):** overlay `absolute inset-0 overflow-hidden rounded-[inherit]` berisi `motion.span` persegi `aspect-square w-[220%]` di tengah dengan `conic-gradient` putih (arc comet: transparan lalu `white/85` memuncak di 75% arc, memudar di 90% arc) yang berotasi `360deg` linear 4.5s (desktop, arc 66deg) / 5.5s (mobile, arc 22deg, puncak `white/70`), ditutup `inset-px rounded-[11px] bg-[#1e1e1e]` (mobile `inset-[2px] rounded-[7px] bg-[#050505]`) sehingga tampak cahaya 1–2px mengelilingi kartu/chip. Fade masuk 0.35s; `pointer-events-none` + `aria-hidden`. Arc sempit di mobile agar tetap terbaca sebagai comet, bukan blok.
+- **Progress line vertikal (dinamis):** track `absolute left-8 top-[30px] bottom-[30px] w-px` (persis center ikon step 1–4) + base `bg-white/8`; fill `motion.span` `w-px bg-gradient-to-b from-white/12 via-white/35 to-white/70` dengan `height` dianimasikan ke posisi step aktif (0.55s ease `[0.21,0.47,0.32,0.98]`). Knob titik `size-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.55)]` dirender di depan baris (layer `z-10`, `pointer-events-none`) di tepi atas kartu step aktif (posisi px dihitung dari tinggi track terukur via `ResizeObserver`), ikut beranimasi 0.55s; disembunyikan saat semua step done. Semua step selesai → fill 100%. Entrance: fill dari 0%, knob fade + scale 0.5.
 - **ChatMenuCard:** `flex items-center gap-3 rounded-xl border p-3.5` + tile `size-9 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500` berisi TeraMark `size-5` + judul "Chat sama Tera" + subteks ("Kenapa aku cocok di Psikologi?" / "Lagi ngobrol" saat aktif / "Terbuka setelah analisis selesai" saat terkunci redup).
 
 ### 5.2 Mobile (di bawah `md`)
-- Header: baris atas (logo + tombol Keluar kecil) + **StepList versi kompak** (baris horizontal): nomor `size-6 rounded-md`, dot hijau untuk done, connector `h-px flex-1 bg-white/10`, item clickable sama aturannya.
+- Header: baris atas (logo + tombol Keluar kecil) + **StepList versi kompak** (baris horizontal): nomor `size-6 rounded-md`, dot hijau untuk done, item clickable sama aturannya. Chip aktif dibungkus wrapper `relative grid place-items-center rounded-[9px] p-[2px]` dengan sweep outline yang sama (versi redup). Connector `h-px min-w-2 flex-1 bg-white/8 overflow-hidden` dengan fill `motion.span` gradient `from-white/10 to-white/45` yang terisi (width 0→100%, 0.45s ease sama) untuk segmen sebelum step aktif.
 - **ChatFab:** tombol bulat `fixed bottom-5 right-5 z-40 md:hidden`, `size-14 rounded-full border border-white/12 bg-[#161616]/90 backdrop-blur` + TeraMark `size-9`, shadow `0_16px_40px_-12px rgba(0,0,0,0.9)`, masuk dengan spring (`initial {opacity:0, y:16, scale:0.9}`). Tampil hanya jika analisis selesai dan bukan di `/chat`.
 
 ---
@@ -219,12 +221,15 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 | Transisi slide (soal/tur) | `AnimatePresence mode="wait"`, x ±32, duration 0.3–0.35 |
 | Pesan chat masuk | opacity 0→1, y 8→0, duration 0.22 |
 | FAB & empty-state avatar | spring `stiffness 260 damping 22` |
+| Sweep outline StepList | conic-gradient putih berotasi 360deg, 4.5s linear (mobile 5.5s), fade masuk 0.35s; statis tanpa rotasi saat reduced motion |
+| Progress line StepList | fill height + knob `top` (px dari track terukur) 0.55s ease `[0.21,0.47,0.32,0.98]`; entrance fill dari 0%, knob fade + scale 0.5; knob di depan baris (`z-10`) pada tepi atas kartu aktif |
+| Segmen mobile StepList | fill width 0→100%, 0.45s ease `[0.21,0.47,0.32,0.98]` |
 | Avatar melayang (tur) | y `[0,-6,0]` duration 3.2 repeat |
 | Typing dots | opacity `[0.3,1,0.3]` duration 1.2, delay bertingkat |
 | Auto-scroll chat | `scrollIntoView` smooth (idle) / auto (streaming) agar tetap menempel bawah |
 | Autosave indicator | "Menyimpan..." → "Tersimpan" → hilang 2,2 dtk |
 | Notice (waktu habis) | amber, hilang setelah 3 dtk |
-| Reduced motion | `useReducedMotion` → tanpa fade/slide/blink |
+| Reduced motion | `useReducedMotion` → tanpa fade/slide/blink; sweep StepList tampil statis tanpa rotasi, fill/knob langsung pindah tanpa transisi |
 
 ---
 
