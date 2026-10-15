@@ -6,7 +6,7 @@
 
 ## 1. Ringkasan sistem
 
-Terang.in adalah aplikasi **Next.js 16 (App Router)** full-stack satu repo: landing publik, alur produk 5 langkah ber-guard, dua endpoint AI (analisis terstruktur & chat streaming), dan PostgreSQL via Drizzle. Tidak ada layanan eksternal selain **Groq API** (LLM).
+Terang.in adalah aplikasi **Next.js 16 (App Router)** full-stack satu repo: landing publik, alur produk 5 langkah ber-guard, dua endpoint AI (analisis: skoring deterministik di kode + narasi terstruktur Groq; chat: streaming), dan PostgreSQL via Drizzle. Tidak ada layanan eksternal selain **Groq API** (LLM).
 
 ```
 Browser
@@ -149,14 +149,14 @@ export const db = drizzle(client, { schema });   // singleton via globalThis di 
 | Tabel | Kolom | Tambahan dari PRD |
 |-------|-------|-------------------|
 | `users` | id uuid PK, full_name, email unique, password_hash, school_origin, grade_level, created_at | + `initial_interests text[]`, + `onboarding_completed_at`, + `assessment_completed_at`, + `grades_completed_at` |
-| `questions` | id, category enum, question_text | + `order_index int` (urutan kuis deterministik) |
+| `questions` | id, category enum, question_text | + `order_index int` (urutan kuis deterministik), + `dimension varchar(30)` (tag dimensi skoring: RIASEC/aptitude/kepribadian/gaya belajar) |
 | `user_assessment_answers` | id, user_id FK cascade, question_id FK cascade, score int | + **unique(user_id, question_id)** untuk upsert; `score 0` = skip terkunci, `1-5` = jawaban |
 | `academic_records` | id, user_id FK, subject varchar(50), semester int, score numeric(5,2) | + **unique(user_id, subject, semester)** untuk upsert |
-| `majors` | id, name, description, career_prospects | — |
+| `majors` | id, name, description, career_prospects | + `profile jsonb` (bobot skoring per jurusan: riasec/aptitude/personality/learning/subjects) |
 | `universities` | id, name, type enum, location | — |
 | `university_majors` | id, university_id FK, major_id FK, capacity int, estimated_tuition numeric(15,2) | — |
-| `analysis_results` | id, user_id FK **unique** (one-to-one), personality_type varchar(50), analysis_summary text, generated_at | + `details jsonb` (menyimpan `{ strengths: string[], alignmentNote: string }`) |
-| `analysis_recommendations` | id, user_id FK, major_id FK, match_percentage numeric(5,2), rank_order int | + `reason text` |
+| `analysis_results` | id, user_id FK **unique** (one-to-one), personality_type varchar(50), analysis_summary text, generated_at | + `details jsonb` (`{ strengths, alignmentNote, weights, method }`) |
+| `analysis_recommendations` | id, user_id FK, major_id FK, match_percentage numeric(5,2), rank_order int | + `reason text`, + `factors jsonb` (rincian sub-skor deterministik per jurusan) |
 | `chat_sessions` | id, user_id FK, started_at | — (satu sesi aktif per user) |
 | `chat_messages` | id, session_id FK cascade, sender_type enum, content text, created_at | — |
 | `action_plans` | id, user_id FK **unique**, final_univ_major_id FK university_majors, roadmap_json jsonb, confidence_score int, status enum | **Belum dipakai** (Fase 5) |
@@ -250,11 +250,12 @@ terangin/
 │   │   ├── assessment.ts       # saveAnswerAction, skipQuestionAction, completeAssessmentAction, restartAssessmentAction
 │   │   ├── grades.ts           # saveGradeAction, deleteGradeAction, completeGradesAction
 │   │   ├── profile.ts          # updateProfileAction, restartTourAction
-│   │   └── analysis.ts         # runAnalysisAction (pipeline AI + persist transaksional)
+│   │   └── analysis.ts         # runAnalysisAction (skoring deterministik → narasi AI → persist transaksional)
 │   ├── analysis/
-│   │   ├── prepare.ts          # prepareAnalysisData(userId): agregasi lengkap (lihat §9.1)
-│   │   ├── prompt.ts           # buildSystemPrompt(), buildUserPrompt(data)
-│   │   └── schema.ts           # buildAnalysisSchema(majorIds) → zod Output.object
+│   │   ├── prepare.ts          # prepareAnalysisData(userId): agregasi lengkap + dimensionScores (lihat §9.1)
+│   │   ├── prompt.ts           # buildSystemPrompt(), buildUserPrompt(data, ranked): prompt narasi
+│   │   ├── score.ts            # scoreMajors + FACTOR_WEIGHTS: skoring deterministik (lihat §9.1)
+│   │   └── schema.ts           # buildAnalysisSchema(top5Ids) → zod Output.object (narasi + reason per jurusan)
 │   └── chat/
 │       ├── context.ts          # getUserChatContext(userId): konteks personal + katalog kampus (satu kampus per baris)
 │       ├── prompt.ts           # buildChatSystemPrompt(context): 5 blok (cakupan, curhat, pegangan cerita, data, gaya)
@@ -287,7 +288,7 @@ State: `semesters: number[]`, `activeSemester`, `rows: GradeRow[]` (`{ key, subj
 ### 7.3 `components/analysis/AnalysisPanel.tsx`
 Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` (idle/running/error), `stage` (0–3, interval 2,2 dtk), `error`.
 - `run()` → `runAnalysisAction()` → sukses → `router.refresh()` (server re-render; remount via `key={generatedAt}` → tampil hasil). Error → mode error + tombol "Coba lagi".
-- Render hasil: kartu kepribadian + alignment note, ringkasan (split paragraf), kekuatan + 4 bar kategori + chip mapel, 5 rekomendasi (rank, match bar, alasan, daftar kampus dengan `formatTuition`), disclaimer.
+- Render hasil: kartu kepribadian + alignment note, ringkasan (split paragraf), kekuatan + 4 bar kategori + chip mapel, 5 rekomendasi (rank, match bar, alasan, panel `FactorBreakdown` dari `factors` jsonb, daftar kampus dengan `formatTuition`), chip bobot faktor di header rekomendasi, disclaimer.
 
 ### 7.4 `components/chat/ChatPanel.tsx`
 - `useChat({ messages: initialMessages, transport: new DefaultChatTransport({ api: "/api/chat" }) })`.
@@ -318,7 +319,7 @@ Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` 
 | `completeGradesAction` | grades | — | validasi tiap semester wajib ≥7 mapel (default kelas ∪ semester terisi) → set flag → redirect `/dashboard`; `{ok:false,error}` berisi shortfall bila kurang |
 | `updateProfileAction` | profile | FormData | update nama/sekolah/kelas/minat → `{ok}` (indikator "Tersimpan") |
 | `restartTourAction` | profile | — | reset `onboarding_completed_at` → redirect `/onboarding` |
-| `runAnalysisAction` | analysis | — | pipeline AI + persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
+| `runAnalysisAction` | analysis | — | skoring deterministik (bobot 30/25/20/15/10) → narasi AI → persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
 
 Konvensi: semua diawali `"use server"`, guard `auth()` + `redirect("/login")`, validasi zod, error ramah berbahasa Indonesia.
 
@@ -327,25 +328,26 @@ Konvensi: semua diawali `"use server"`, guard `auth()` + `redirect("/login")`, v
 ## 9. Integrasi AI
 
 ### 9.1 Analisis (Fase 3) — `lib/actions/analysis.ts` + `lib/analysis/*`
-Alur:
+Alur (skor dihitung kode, LLM hanya menarasikan):
 1. Guard: session → profile → ketiga flag completed → `GROQ_API_KEY` ada → `prepareAnalysisData` → bank jurusan ≥ 3.
-2. `prepareAnalysisData(userId)` menghasilkan: profil, agregat asesmen (rata-rata per kategori, top 4 & low 3 jawaban dengan teks soal), nilai (rata-rata per mapel + jumlah semester), daftar jurusan, dan `campusesByMajor: Map<majorId, CampusInfo[]>`.
-3. `generateText`:
+2. `prepareAnalysisData(userId)` menghasilkan: profil, agregat asesmen (rata-rata per kategori, `dimensionScores` 0-100 per tag dimensi, top 4 & low 3 jawaban dengan teks soal), nilai (rata-rata per mapel + jumlah semester), daftar jurusan + `profile` (bobot skoring), dan `campusesByMajor: Map<majorId, CampusInfo[]>`.
+3. `scoreMajors` (`lib/analysis/score.ts`) menghitung skor semua jurusan dengan bobot tetap: Minat 30% (fit RIASEC), Bakat 25% (fit aptitude), Nilai rapor 20% (mapel pendukung), Kepribadian 15%, Gaya belajar 10%. Sub-skor faktor 0-100, dinormalisasi terhadap dimensi/mapel yang ada datanya; total = rata-rata berbobot faktor tersedia (minimal 2 faktor); `match = clamp(40..97, 40 + 0.57 x total)`; ambil top 5 (kalau jurusan layak-skor < 3 → error ramah).
+4. `generateText` (narasi saja; skema tidak lagi memuat match%/urutan):
 ```ts
 const result = await generateText({
   model: groq("openai/gpt-oss-120b"),
-  output: Output.object({ schema: buildAnalysisSchema(majorIds) }),  // enum majorId dari DB
-  system: buildSystemPrompt(),      // 13 prinsip konselor
-  prompt: buildUserPrompt(data),    // agregat + kandidat jurusan
+  output: Output.object({ schema: buildAnalysisSchema(top5Ids) }),  // enum = id top 5 hasil skoring
+  system: buildSystemPrompt(),            // Tera narator: skor final, reason wajib sebut sub-skor
+  prompt: buildUserPrompt(data, ranked),  // data + HASIL SKORING SISTEM per jurusan
   temperature: 0.6,
   providerOptions: { groq: { reasoningEffort: "medium" } },
 });
 ```
-4. Post-validasi: dedupe majorId → sort match desc → slice 5 → clamp 40–97 → rankOrder 1..n; `personalityType` di-slice 50 (batas varchar); strengths trim/filter/slice 5. Jika rekomendasi < 3 → error minta ulang.
-5. Persist transaksional: `delete analysis_recommendations` → upsert `analysis_results` (onConflict user_id; simpan `details = { strengths, alignmentNote }`) → insert rekomendasi (match `toFixed(2)`).
-6. Error handling: try/catch → pesan ramah; `GROQ_API_KEY` kosong → pesan instruksi.
+5. Merge: urutan & match dari kode; `reason` dari LLM (fallback narasi deterministik kalau LLM melewatkan jurusan); `personalityType` di-slice 50 (batas varchar); strengths trim/filter/slice 5.
+6. Persist transaksional: `delete analysis_recommendations` → upsert `analysis_results` (onConflict user_id; `details = { strengths, alignmentNote, weights, method: "deterministic-v1" }`) → insert rekomendasi (match `toFixed(2)`, `factors` = rincian sub-skor jsonb).
+7. Error handling: try/catch → pesan ramah; `GROQ_API_KEY` kosong → pesan instruksi.
 
-**Prompt (analisis):** system = persona "Tera konselor" + prinsip (semua klaim merujuk data; validasi silang minat awal vs asesmen; match% bervariasi realistis; alasan 2–3 kalimat menyebut data; tanpa emoji; personalityType RIASEC ≤50 char). User = teks terstruktur: PROFIL DASAR, ASESMEN (kategori + top/low items), NILAI RAPOR, DAFTAR JURUSAN KANDIDAT (id + nama + deskripsi singkat).
+**Prompt (analisis):** system = persona Tera + konteks "skor sudah dihitung sistem dengan bobot tetap, jangan diubah" + aturan narasi (reason menyebut sub-skor; validasi silang minat awal vs asesmen; tanpa emoji & em dash; personalityType RIASEC ≤50 char). User = teks terstruktur: PROFIL DASAR, ASESMEN (kategori + `dimensionScores` + top/low items), NILAI RAPOR, HASIL SKORING SISTEM (rank + sub-skor per jurusan top 5).
 
 ### 9.2 Chat (Fase 4) — `app/api/chat/route.ts` + `lib/chat/*`
 Alur POST:
@@ -365,11 +367,11 @@ Alur POST:
 
 ## 10. Konvensi & gotcha teknis (ringkas; detail di `continue.md` §4)
 
-1. Halaman ber-session: `instant = false` + `await connection()` sebelum `auth()`.
+1. Halaman ber-session: `instant = false` + `await connection()` sebelum `auth()` (berlaku juga untuk guard redirect di `/`, `/login`, `/signup`).
 2. Jangan render `<Link>` ke route ber-guard sebelum prasyarat selesai (prefetch-cache).
 3. Lint react-hooks: dilarang setState sinkron di body effect; pakai interval/event handler/`useSyncExternalStore`.
-4. Anti AI-slop di semua copy + prompt AI (grep audit tersedia).
-5. Groq: strict schema = semua field required; structured output tanpa streaming; `reasoningEffort` low/medium/high.
+4. Anti AI-slop di semua copy + prompt AI (grep audit tersedia). Output chat tambahan disanitasi `sanitizeChatText` di `onFinish` + saat render.
+5. Groq: strict schema = semua field required; structured output tanpa streaming; `reasoningEffort` chat `high` (akurasi angka katalog), analisis `medium`.
 6. `trustHost: true` wajib di auth.ts.
 7. Upsert Drizzle butuh unique constraint; decimal = string dari driver.
 8. Seeder idempotent (skip kalau terisi; `--force` untuk ulang).

@@ -1,4 +1,5 @@
 import type { AnalysisData } from "./prepare";
+import type { ScoredMajor } from "./score";
 
 const CATEGORY_LABELS: Record<string, string> = {
   MINAT: "Minat",
@@ -11,36 +12,38 @@ export function buildSystemPrompt(): string {
   return [
     "Kamu adalah Tera, konselor jurusan kuliah untuk siswa SMA di Indonesia yang hangat, jujur, dan tidak menghakimi.",
     "",
-    "PRINSIP ANALISIS:",
-    "1. Tugasmu membantu siswa memahami dirinya sendiri, bukan menentukan pilihan mereka.",
-    "2. Semua klaim wajib merujuk data yang diberikan. Jangan mengarang fakta atau jurusan di luar daftar kandidat.",
-    "3. Validasi silang: bandingkan minat awal yang dipilih siswa saat onboarding dengan pola jawaban asesmen. Kalau selaras, tegaskan. Kalau ada perbedaan, sampaikan sebagai temuan yang menarik, bukan kesalahan.",
-    "4. Pertimbangkan realisme akademik: nilai mata pelajaran pendukung jurusan jadi bahan pertimbangan kecocokan.",
-    "5. matchPercentage harus bervariasi dan realistis, jangan semua di atas 85. Rekomendasi teratas mencerminkan gabungan minat dan kemampuan, bukan cuma salah satunya.",
-    "6. Gaya belajar dan kepribadian ikut dipertimbangkan, misalnya jurusan dengan praktik lapangan vs analisis teoritis.",
-    "7. Bahasa Indonesia yang jelas dan santai tapi kredibel. Tanpa emoji, tanpa klise motivasi berlebihan, tanpa istilah psikologi rumit.",
-    "8. reason berisi 2 sampai 3 kalimat dan wajib menyebut data spesifik, misalnya skor kategori, nama mata pelajaran, atau minat awal.",
-    "9. personalityType diisi tipe ringkas berbasis pola RIASEC, contoh: Investigatif-Analitis. Maksimal 50 karakter.",
-    "10. analysisSummary berisi 2 sampai 3 paragraf pendek (total di bawah 200 kata) yang merangkum potensi siswa.",
-    "11. strengths berisi 3 sampai 5 kekuatan spesifik yang terlihat dari data.",
-    "12. recommendations berisi 3 sampai 5 jurusan dari daftar kandidat, diurutkan dari yang paling cocok. rankOrder dimulai dari 1.",
-    "13. alignmentNote berisi 1 sampai 2 kalimat tentang keselarasan minat awal dengan hasil asesmen.",
+    "KONTEKS PENTING:",
+    "Skor kecocokan jurusan sudah dihitung oleh sistem Terang.in dari data siswa dengan bobot tetap: Minat 30 persen, Bakat 25 persen, Nilai rapor 20 persen, Kepribadian 15 persen, Gaya belajar 10 persen. Skor dan urutan itu final, jangan diubah dan jangan mengarang skor baru.",
+    "",
+    "TUGASMU:",
+    "1. Tulis narasi dan alasan berdasarkan skor yang diberikan. Semua klaim wajib merujuk angka skor atau data siswa yang tersedia.",
+    "2. Untuk tiap jurusan di daftar peringkat, tulis reason 2 sampai 3 kalimat yang menyebut sub-skor faktornya, misalnya skor minat, bakat, atau nilai mata pelajaran, lalu kaitkan dengan profil siswa.",
+    "3. Jangan mengarang fakta, jurusan, atau angka di luar data yang diberikan.",
+    "4. Validasi silang: bandingkan minat awal yang dipilih siswa saat onboarding dengan pola jawaban asesmen. Kalau selaras, tegaskan. Kalau ada perbedaan, sampaikan sebagai temuan yang menarik, bukan kesalahan.",
+    "5. Bahasa Indonesia yang jelas dan santai tapi kredibel. Tanpa emoji, tanpa klise motivasi berlebihan, tanpa istilah psikologi rumit, tanpa em dash.",
+    "6. personalityType diisi tipe ringkas berbasis pola RIASEC, contoh: Investigatif-Analitis. Maksimal 50 karakter.",
+    "7. analysisSummary berisi 2 sampai 3 paragraf pendek (total di bawah 200 kata) yang merangkum potensi siswa.",
+    "8. strengths berisi 3 sampai 5 kekuatan spesifik yang terlihat dari data.",
+    "9. alignmentNote berisi 1 sampai 2 kalimat tentang keselarasan minat awal dengan hasil asesmen.",
   ].join("\n");
 }
 
-export function buildUserPrompt(data: AnalysisData): string {
-  const { profile, assessment, academic, majors } = data;
+export function buildUserPrompt(data: AnalysisData, ranked: ScoredMajor[]): string {
+  const { profile, assessment, academic } = data;
 
   const categoryLines = Object.entries(assessment.categoryAverages)
     .map(([category, average]) => {
       const label = CATEGORY_LABELS[category] ?? category;
       return `- ${label}: ${
-        average === null
-          ? "tidak ada data"
-          : `${average} dari skala 5 (0 soal terkunci)`
+        average === null ? "tidak ada data" : `${average} dari skala 5`
       }`;
     })
     .join("\n");
+
+  const dimensionLines =
+    Object.entries(assessment.dimensionScores)
+      .map(([dimension, score]) => `- ${dimension}: ${score ?? "tidak ada data"}`)
+      .join("\n") || "- tidak ada data";
 
   const subjectLines =
     academic.subjects.length > 0
@@ -51,15 +54,6 @@ export function buildUserPrompt(data: AnalysisData): string {
           )
           .join("\n")
       : "- belum ada nilai rapor";
-
-  const majorLines = majors
-    .map(
-      (major) =>
-        `- id: ${major.id} | ${major.name} | ${
-          (major.description ?? "").slice(0, 140)
-        }`,
-    )
-    .join("\n");
 
   const topAnswerLines =
     assessment.topAnswers.length > 0
@@ -74,8 +68,22 @@ export function buildUserPrompt(data: AnalysisData): string {
           .join("\n")
       : "- tidak ada data";
 
+  const rankedLines = ranked
+    .map((item, index) => {
+      const factors = item.factors;
+      const parts = [
+        `minat ${factors.minat ?? "-"}`,
+        `bakat ${factors.bakat ?? "-"}`,
+        `nilai ${factors.nilai ?? "-"}`,
+        `kepribadian ${factors.kepribadian ?? "-"}`,
+        `gaya belajar ${factors.gayaBelajar ?? "-"}`,
+      ].join(", ");
+      return `- Rank ${index + 1}: id: ${item.majorId} | ${item.name} | kecocokan ${factors.match} persen | total ${factors.total} | sub-skor: ${parts}`;
+    })
+    .join("\n");
+
   return [
-    "Berikut data siswa yang perlu dianalisis.",
+    "Berikut data siswa dan hasil skoring sistem yang perlu kamu narasikan.",
     "",
     "PROFIL DASAR:",
     `- Nama panggilan: ${profile.fullName.split(" ")[0]}`,
@@ -90,6 +98,9 @@ export function buildUserPrompt(data: AnalysisData): string {
     `ASESMEN MINAT & BAKAT (${assessment.answeredCount} soal terjawab, ${assessment.skippedCount} soal terlewat karena waktu):`,
     categoryLines,
     "",
+    "Skor dimensi asesmen (skala 0 sampai 100):",
+    dimensionLines,
+    "",
     "Pernyataan dengan skor tertinggi:",
     topAnswerLines,
     "",
@@ -99,9 +110,9 @@ export function buildUserPrompt(data: AnalysisData): string {
     `NILAI RAPOR (${academic.semesterCount} semester terisi):`,
     subjectLines,
     "",
-    "DAFTAR JURUSAN KANDIDAT (pilih rekomendasi hanya dari daftar ini, gunakan id-nya):",
-    majorLines,
+    "HASIL SKORING SISTEM (deterministik, jangan diubah):",
+    rankedLines,
     "",
-    "Susun analisis sesuai schema yang diminta.",
+    "Tulis narasi dan satu reason untuk tiap jurusan pada daftar peringkat di atas.",
   ].join("\n");
 }

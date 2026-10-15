@@ -20,6 +20,16 @@ function formatTuition(value: string | null) {
   return `sekitar Rp ${millions}jt per semester`;
 }
 
+type FactorBreakdown = {
+  minat?: number | null;
+  bakat?: number | null;
+  nilai?: number | null;
+  kepribadian?: number | null;
+  gayaBelajar?: number | null;
+  total?: number | null;
+  match?: number | null;
+};
+
 export async function getUserChatContext(userId: string): Promise<string> {
   const data = await prepareAnalysisData(userId);
 
@@ -35,6 +45,7 @@ export async function getUserChatContext(userId: string): Promise<string> {
         matchPercentage: analysisRecommendations.matchPercentage,
         rankOrder: analysisRecommendations.rankOrder,
         reason: analysisRecommendations.reason,
+        factors: analysisRecommendations.factors,
       })
       .from(analysisRecommendations)
       .innerJoin(majors, eq(analysisRecommendations.majorId, majors.id))
@@ -100,12 +111,15 @@ export async function getUserChatContext(userId: string): Promise<string> {
       alignmentNote?: string;
     };
     const recommendationLines = recommendationRows
-      .map(
-        (item) =>
-          `- Rank ${item.rankOrder}: ${item.majorName} (kecocokan ${Number(
-            item.matchPercentage,
-          ).toFixed(0)}%). Alasan: ${item.reason ?? "-"}`,
-      )
+      .map((item) => {
+        const factors = (item.factors ?? null) as FactorBreakdown | null;
+        const factorText = factors
+          ? ` Sub-skor: minat ${factors.minat ?? "-"}, bakat ${factors.bakat ?? "-"}, nilai ${factors.nilai ?? "-"}, kepribadian ${factors.kepribadian ?? "-"}, gaya belajar ${factors.gayaBelajar ?? "-"}.`
+          : "";
+        return `- Rank ${item.rankOrder}: ${item.majorName} (kecocokan ${Number(
+          item.matchPercentage,
+        ).toFixed(0)}%).${factorText} Alasan: ${item.reason ?? "-"}`;
+      })
       .join("\n");
     sections.push(
       [
@@ -115,6 +129,7 @@ export async function getUserChatContext(userId: string): Promise<string> {
         details.strengths && details.strengths.length > 0
           ? `- Kekuatan: ${details.strengths.join("; ")}`
           : "",
+        "- Skor kecocokan dihitung sistem dengan bobot tetap: Minat 30 persen, Bakat 25 persen, Nilai rapor 20 persen, Kepribadian 15 persen, Gaya belajar 10 persen.",
         "- Rekomendasi jurusan:",
         recommendationLines,
       ]

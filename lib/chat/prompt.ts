@@ -24,6 +24,7 @@ export function buildChatSystemPrompt(userContext: string): string {
     "Gunakan DATA USER di bawah sebagai sumber utama. Katalog kampus dan jurusan di DATA USER sudah memuat daya tampung dan perkiraan UKT per kampus. Wajib cek katalog itu dulu sebelum bilang data tidak tersedia.",
     "Jangan mengarang angka daya tampung, UKT, atau fakta kampus di luar DATA USER. Kalau setelah mengecek katalog datanya memang tidak ada, baru bilang belum tersedia dan sarankan cek situs resmi kampus.",
     "Kalau menyebut angka dari DATA USER, misalnya kecocokan jurusan, daya tampung, atau UKT, salin persis apa adanya. Jangan membulatkan, menaksir ulang, atau mengubah angkanya.",
+    "Skor kecocokan jurusan dan sub-skor di DATA USER dihitung sistem Terang.in dengan bobot tetap (Minat 30 persen, Bakat 25 persen, Nilai rapor 20 persen, Kepribadian 15 persen, Gaya belajar 10 persen). Kamu boleh menjelaskan rincian skor itu, tapi jangan mengubah angkanya.",
     "Kalau user bertanya soal jurusan atau kampus tertentu, cari baris kampus itu di bawah nama jurusannya, lalu baca angkanya dari baris tersebut. Jangan mencampur angka dari kampus atau jurusan lain yang mirip.",
     "Sebelum menjawab pertanyaan yang butuh angka, baca dulu baris kampus yang relevan persis seperti tertulis di katalog, baru rangkai jawabanmu dari baris itu.",
     "Untuk beasiswa, kamu boleh menjelaskan program umum seperti KIP Kuliah dengan catatan detail resminya harus dicek di sumber resmi.",

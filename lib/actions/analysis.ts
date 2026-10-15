@@ -10,9 +10,35 @@ import { analysisRecommendations, analysisResults } from "@/db/schema";
 import { prepareAnalysisData } from "@/lib/analysis/prepare";
 import { buildSystemPrompt, buildUserPrompt } from "@/lib/analysis/prompt";
 import { buildAnalysisSchema } from "@/lib/analysis/schema";
+import {
+  FACTOR_WEIGHTS,
+  scoreMajors,
+  type FactorScores,
+  type MajorProfile,
+} from "@/lib/analysis/score";
 import { getUserProfile } from "@/lib/onboarding";
 
 export type RunAnalysisResult = { ok: true } | { ok: false; error: string };
+
+const MIN_SCORABLE_MAJORS = 3;
+const TOP_RECOMMENDATIONS = 5;
+
+function defaultReason(majorName: string, factors: FactorScores): string {
+  const entries: Array<[string, number | null]> = [
+    ["minat", factors.minat],
+    ["bakat", factors.bakat],
+    ["nilai rapor", factors.nilai],
+    ["kepribadian", factors.kepribadian],
+    ["gaya belajar", factors.gayaBelajar],
+  ];
+  const best = entries
+    .filter((entry): entry is [string, number] => entry[1] !== null)
+    .sort((a, b) => b[1] - a[1])[0];
+  if (!best) {
+    return `Skor kecocokanmu untuk ${majorName} belum didukung data yang cukup.`;
+  }
+  return `Kecocokanmu di ${majorName} paling didorong faktor ${best[0]} (skor ${Math.round(best[1])}). Bandingkan juga dengan pilihan lain di daftar ini, ya.`;
+}
 
 export async function runAnalysisAction(): Promise<RunAnalysisResult> {
   const session = await auth();
@@ -44,7 +70,7 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
   }
 
   const data = await prepareAnalysisData(session.user.id);
-  if (data.majors.length < 3) {
+  if (data.majors.length < MIN_SCORABLE_MAJORS) {
     return {
       ok: false,
       error:
@@ -52,7 +78,31 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
     };
   }
 
-  const majorIds = data.majors.map((major) => major.id) as [
+  const subjectAverages: Record<string, number | null> = Object.fromEntries(
+    data.academic.subjects.map((item) => [item.subject, item.average]),
+  );
+
+  const scored = scoreMajors(
+    data.majors.map((major) => ({
+      id: major.id,
+      name: major.name,
+      profile: (major.profile as MajorProfile | null) ?? null,
+    })),
+    data.assessment.dimensionScores,
+    subjectAverages,
+  );
+
+  const scorable = scored.filter((item) => item.factors.total !== null);
+  if (scorable.length < MIN_SCORABLE_MAJORS) {
+    return {
+      ok: false,
+      error:
+        "Data kamu belum cukup untuk menghitung rekomendasi. Lengkapi asesmen dan nilai rapor dulu ya.",
+    };
+  }
+
+  const ranked = scorable.slice(0, TOP_RECOMMENDATIONS);
+  const narrationIds = ranked.map((item) => item.majorId) as [
     string,
     ...string[],
   ];
@@ -61,9 +111,9 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
   try {
     const result = await generateText({
       model: groq("openai/gpt-oss-120b"),
-      output: Output.object({ schema: buildAnalysisSchema(majorIds) }),
+      output: Output.object({ schema: buildAnalysisSchema(narrationIds) }),
       system: buildSystemPrompt(),
-      prompt: buildUserPrompt(data),
+      prompt: buildUserPrompt(data, ranked),
       temperature: 0.6,
       providerOptions: {
         groq: { reasoningEffort: "medium" },
@@ -86,28 +136,18 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
     };
   }
 
-  const seenMajors = new Set<string>();
-  const recommendations = [...rawOutput.recommendations]
-    .filter((item) => {
-      if (seenMajors.has(item.majorId)) return false;
-      seenMajors.add(item.majorId);
-      return true;
-    })
-    .sort((a, b) => b.matchPercentage - a.matchPercentage)
-    .slice(0, 5)
-    .map((item, index) => ({
-      majorId: item.majorId,
-      matchPercentage: Math.min(97, Math.max(40, item.matchPercentage)),
-      rankOrder: index + 1,
-      reason: item.reason.trim(),
-    }));
+  const reasonByMajor = new Map(
+    rawOutput.recommendations.map((item) => [item.majorId, item.reason.trim()]),
+  );
 
-  if (recommendations.length < 3) {
-    return {
-      ok: false,
-      error: "Hasil analisis kurang lengkap. Coba jalankan ulang ya.",
-    };
-  }
+  const recommendations = ranked.map((item, index) => ({
+    majorId: item.majorId,
+    matchPercentage: item.factors.match ?? 40,
+    rankOrder: index + 1,
+    reason:
+      reasonByMajor.get(item.majorId) ?? defaultReason(item.name, item.factors),
+    factors: item.factors,
+  }));
 
   const personalityType = rawOutput.personalityType.trim().slice(0, 50);
   const strengths = rawOutput.strengths
@@ -129,7 +169,12 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
         userId: session.user.id,
         personalityType,
         analysisSummary,
-        details: { strengths, alignmentNote },
+        details: {
+          strengths,
+          alignmentNote,
+          weights: FACTOR_WEIGHTS,
+          method: "deterministic-v1",
+        },
         generatedAt,
       })
       .onConflictDoUpdate({
@@ -137,7 +182,12 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
         set: {
           personalityType,
           analysisSummary,
-          details: { strengths, alignmentNote },
+          details: {
+            strengths,
+            alignmentNote,
+            weights: FACTOR_WEIGHTS,
+            method: "deterministic-v1",
+          },
           generatedAt,
         },
       });
@@ -149,6 +199,7 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
         matchPercentage: item.matchPercentage.toFixed(2),
         rankOrder: item.rankOrder,
         reason: item.reason,
+        factors: item.factors,
       })),
     );
   });

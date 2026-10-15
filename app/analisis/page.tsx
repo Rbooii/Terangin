@@ -8,6 +8,7 @@ import { analysisRecommendations, analysisResults, majors } from "@/db/schema";
 import AppShell from "@/components/app/AppShell";
 import AnalysisPanel, {
   type AnalysisStats,
+  type FactorView,
   type SavedAnalysisView,
 } from "@/components/analysis/AnalysisPanel";
 import { prepareAnalysisData } from "@/lib/analysis/prepare";
@@ -67,6 +68,7 @@ export default async function AnalysisPage() {
         matchPercentage: analysisRecommendations.matchPercentage,
         rankOrder: analysisRecommendations.rankOrder,
         reason: analysisRecommendations.reason,
+        factors: analysisRecommendations.factors,
         majorName: majors.name,
       })
       .from(analysisRecommendations)
@@ -77,6 +79,8 @@ export default async function AnalysisPage() {
     const details = (result.details ?? {}) as {
       strengths?: string[];
       alignmentNote?: string;
+      weights?: Record<string, number>;
+      method?: string;
     };
 
     saved = {
@@ -85,12 +89,15 @@ export default async function AnalysisPage() {
       strengths: details.strengths ?? [],
       alignmentNote: details.alignmentNote ?? "",
       generatedAt: result.generatedAt.toISOString(),
+      weights: details.weights,
+      method: details.method,
       recommendations: recommendationRows.map((row) => ({
         majorId: row.majorId,
         majorName: row.majorName,
         matchPercentage: Number(row.matchPercentage),
         rankOrder: row.rankOrder,
         reason: row.reason ?? "",
+        factors: (row.factors as FactorView | null) ?? null,
         campuses: data.campusesByMajor.get(row.majorId) ?? [],
       })),
     };

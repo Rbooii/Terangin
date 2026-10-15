@@ -124,6 +124,7 @@ cursor-not-allowed rounded-full border border-white/8 px-3.5 py-1.5 text-[12px] 
 **Timer badge asesmen:** `flex items-baseline gap-1 rounded-xl border px-3 py-1.5` + angka `text-2xl font-semibold leading-none tabular-nums` + label `text-[11px] opacity-70`; normal `border-white/10 text-white`, ≤5 dtk `border-amber-300/30 text-amber-300`.
 **Typing dots (chat):** 3 titik `size-1.5 rounded-full bg-zinc-500` berdenyut `opacity [0.3,1,0.3]` delay 0.18s berurutan.
 **Progress tahap (analisis):** lingkaran `size-6 rounded-full` — done `bg-emerald-400/15 text-emerald-300` + CheckIcon, aktif `border border-white/30` + dot berdenyut, pending `border border-white/10`.
+**Factor bar (analisis deterministik):** bar sub-skor faktor di `FactorBreakdown`. Container panel: `grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border border-white/6 bg-white/[0.02] px-3.5 py-3 sm:grid-cols-5`. Tiap faktor: label `text-[10px] text-zinc-500` + angka `text-[11px] tabular-nums text-zinc-300`, track `mt-1 h-0.5 overflow-hidden rounded-full bg-white/8`, isi `h-full rounded-full bg-white/50` dengan `width: %` (nilai 0-100, di-clamp).
 
 ### 3.6 Ikon (hanya dari `components/landing/icons.tsx`)
 `ArrowRight`, `ArrowDown`, `ArrowUp`, `ChevronDown`, `SendIcon`, `SparkleIcon`, `TrashIcon`, `CheckIcon` — semua stroke SVG 1.3–1.5, `currentColor`. **Jangan tambah ikon dekoratif/emoji.** Kalau butuh ikon baru, buat SVG stroke minimalis dengan pola yang sama.
@@ -191,18 +192,20 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 
 ### 6.6 Input Nilai `/nilai`
 - Header + banner hijau (jika sudah selesai) + **chip semester** (Semester 1..n, aktif putih, "+ Semester" dashed, cap 5).
-- Kartu semester: judul "Semester N" + counter "X dari 7 mapel" (amber-300/80 saat kurang, jadi "X mapel tersimpan" saat cukup) → baris mapel (label/input mapel + input nilai + tombol trash; sub-line status) → **baris saran** "Saran dari Semester 1" (mapel redup dashed + input nilai dashed + tombol "Lewati") → "Tambah cepat" chips → tombol dashed "Tambah mata pelajaran".
-- Footer: counter total + hint amber "Tiap semester minimal 7 mata pelajaran. Semester n kurang m mapel." + tombol "Selesai" (primary; disabled sampai semua semester wajib, yaitu default kelas + semester yang sudah ada isinya, punya ≥7 mapel) / "Kembali ke dashboard".
+- Kartu semester: judul "Semester N" + counter kanan `text-[11px]` ("X dari 7 mapel" dengan `text-amber-300/80` saat kurang, jadi "X mapel tersimpan" `text-zinc-500` saat cukup) → baris mapel (label/input mapel + input nilai + tombol trash; sub-line status) → **baris saran** "Saran dari Semester 1" (mapel redup dashed + input nilai dashed + tombol "Lewati") → "Tambah cepat" chips → tombol dashed "Tambah mata pelajaran".
+- Footer: counter total + hint amber (`max-w-sm text-[12px] leading-relaxed text-amber-300/80`) "Tiap semester minimal 7 mata pelajaran. Semester n kurang m mapel." + tombol "Selesai" (primary; disabled dengan `disabled:opacity-40` sampai semua semester wajib, yaitu default kelas + semester yang sudah ada isinya, punya ≥7 mapel) / "Kembali ke dashboard".
 
 ### 6.7 Hasil Analisis `/analisis`
-- **Intro:** kartu "Analisis siap dijalankan" + TeraMark + chip data (jawaban asesmen, mapel/semester, minat) + tombol "Mulai analisis".
+- **Intro:** kartu "Analisis siap dijalankan" + TeraMark + chip data (jawaban asesmen, mapel/semester, minat) + tombol "Mulai analisis". Copy intro menyebut komposisi: "Skor kecocokan dihitung dari 5 faktor berbobot: minat, bakat, nilai rapor, kepribadian, dan gaya belajar."
 - **Running:** TeraMark pulsing + "Tera lagi menganalisis" + 4 tahap progress beranimasi.
 - **Hasil:** baris tanggal "Dianalisis {tanggal}" + "Analisis ulang" (outline) → kartu kepribadian (TeraMark size-12 + label + tipe besar + alignment note dalam kotak `bg-black/20`) → kartu "Ringkasan potensimu" (paragraf) → kartu "Kekuatanmu" (list sparkle violet + grid 4 stat kategori dengan bar + chip mapel terkuat) → kartu "Rekomendasi jurusan" (5 sub-kartu: rank badge, nama, match% + bar, alasan, daftar kampus dengan daya tampung/UKT) + disclaimer → footer note.
+- **Dasar penilaian:** chip bobot faktor (`rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-zinc-400`; Minat 30%, Bakat 25%, Nilai rapor 20%, Kepribadian 15%, Gaya belajar 10%; dibaca dari `saved.weights` dengan fallback `FACTOR_WEIGHTS`) + panel `FactorBreakdown` (spec bar di §3.5) di tiap kartu rekomendasi, hanya menampilkan faktor yang punya skor. Tampil hanya kalau data `factors` tersedia (hasil baru); hasil lama tanpa `factors` tidak menampilkan panel ini.
 
 ### 6.8 Chat `/chat`
 - Header kecil: TeraMark size-8 + "Tera" + "Konselor jurusanmu, jawab pakai data profilmu".
 - **Empty state:** TeraMark size-16 spring-in + "Halo, aku Tera" + subteks + 3 kartu saran pertanyaan (fade-in stagger 0.08s).
 - **Percakapan:** user = bubble putih `rounded-2xl rounded-tr-md` rata kanan; AI = TeraMark size-7 + teks markdown (bold/list rapi, tanpa bubble); animasi fade/slide 0.22s; typing dots saat menunggu token; error = bar merah + "Coba lagi".
+- **Teks AI disanitasi:** balasan assistant (streaming maupun dari riwayat DB) dinormalisasi `sanitizeChatText` sebelum render (em dash, en dash, non-breaking hyphen/space → ASCII) supaya konsisten dengan kebijakan anti-slop; tidak ada perubahan visual yang kasat mata.
 - **Input sticky bawah:** container `rounded-2xl border border-white/10 bg-[#161616] p-2 pl-4` + textarea "Pesan Tera" + tombol bulat putih ArrowUp (atau kotak stop saat streaming) + disclaimer mikro "Tera bisa keliru. Cek info resmi kampus sebelum memutuskan ya." Background `bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent`.
 
 ### 6.9 Profil `/profil`
