@@ -19,7 +19,7 @@ export default function ChatFab({ unlocked }: { unlocked: boolean }) {
       <Link
         href="/chat"
         aria-label="Chat sama Tera"
-        className="grid size-14 place-items-center rounded-full border border-white/12 bg-[#161616]/90 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.9)] backdrop-blur transition-colors hover:border-white/25"
+        className="grid size-14 place-items-center rounded-full border border-overlay/12 bg-surface/90 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.9)] backdrop-blur transition-colors hover:border-overlay/25"
       >
         <TeraMark className="size-9" />
       </Link>

@@ -69,6 +69,11 @@ export const gradeDeleteSchema = z.object({
   semester: z.number().int().min(1).max(5),
 });
 
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, "Password wajib diisi"),
+  confirmation: z.string().min(1, "Ketik HAPUS untuk konfirmasi"),
+});
+
 export const profileSchema = z.object({
   fullName: z
     .string()

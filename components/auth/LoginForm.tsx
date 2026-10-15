@@ -29,12 +29,12 @@ export default function LoginForm() {
         className={inputClass}
       />
 
-      {state?.error && <p className="text-[12px] text-red-400">{state.error}</p>}
+      {state?.error && <p className="text-[12px] text-danger">{state.error}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="h-11 w-full rounded-full bg-white text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-11 w-full rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Sebentar..." : "Masuk"}
       </button>

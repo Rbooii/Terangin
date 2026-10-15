@@ -36,20 +36,20 @@ export default async function OnboardingPage() {
     <AppShell user={{ name: profile.fullName }} steps={steps}>
       {hasBasics ? (
         <>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">
             Tur singkat
           </h1>
-          <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-md text-[13px] leading-relaxed text-fg-muted">
             Kenalan sama cara kerja Terang.in, satu menit aja.
           </p>
           <TourSlides />
         </>
       ) : (
         <>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">
             Kenalan dulu, yuk
           </h1>
-          <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-md text-[13px] leading-relaxed text-fg-muted">
             Beberapa info dasar biar Tera bisa nemenin kamu. Cepet kok, nggak
             sampai satu menit.
           </p>

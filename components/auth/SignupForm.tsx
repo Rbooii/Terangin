@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { registerAction, type AuthFormState } from "@/lib/actions/auth";
 
 export const inputClass =
-  "h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-white/25 focus:bg-white/[0.06]";
+  "h-11 w-full rounded-xl border border-overlay/10 bg-overlay/[0.04] px-4 text-sm text-fg outline-none transition-colors placeholder:text-fg-faintest focus:border-overlay/25 focus:bg-overlay/[0.06]";
 
 export default function SignupForm() {
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(
@@ -42,12 +42,12 @@ export default function SignupForm() {
         className={inputClass}
       />
 
-      {state?.error && <p className="text-[12px] text-red-400">{state.error}</p>}
+      {state?.error && <p className="text-[12px] text-danger">{state.error}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="h-11 w-full rounded-full bg-white text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-11 w-full rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Sebentar..." : "Daftar & mulai"}
       </button>

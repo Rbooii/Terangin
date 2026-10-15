@@ -26,22 +26,22 @@ export default function Navbar({ authSlot }: { authSlot?: ReactNode }) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/5 bg-black/60 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-overlay/5 bg-bg/70 backdrop-blur-md">
       <nav className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-8">
           <Link
             href="/"
-            className="text-[15px] font-semibold tracking-tight text-white"
+            className="text-[15px] font-semibold tracking-tight text-fg"
           >
-            Terang<span className="text-zinc-500">.in</span>
+            Terang<span className="text-fg-faint">.in</span>
           </Link>
 
-          <div className="hidden items-center gap-6 text-[13px] text-zinc-400 sm:flex">
+          <div className="hidden items-center gap-6 text-[13px] text-fg-muted sm:flex">
             <div className="relative" ref={ref}>
               <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="flex items-center gap-1 transition-colors hover:text-white"
+                className="flex items-center gap-1 transition-colors hover:text-fg"
                 aria-expanded={open}
                 aria-haspopup="true"
               >
@@ -51,13 +51,13 @@ export default function Navbar({ authSlot }: { authSlot?: ReactNode }) {
                 />
               </button>
               {open && (
-                <div className="absolute left-0 top-8 w-52 rounded-xl border border-white/10 bg-[#161616] p-1.5 shadow-2xl">
+                <div className="absolute left-0 top-8 w-52 rounded-xl border border-overlay/10 bg-surface p-1.5 shadow-2xl">
                   {products.map((item) => (
                     <Link
                       key={item.label}
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+                      className="block rounded-lg px-3 py-2 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
                     >
                       {item.label}
                     </Link>
@@ -67,7 +67,7 @@ export default function Navbar({ authSlot }: { authSlot?: ReactNode }) {
             </div>
             <Link
               href="#pricing"
-              className="transition-colors hover:text-white"
+              className="transition-colors hover:text-fg"
             >
               Pricing
             </Link>
@@ -78,14 +78,14 @@ export default function Navbar({ authSlot }: { authSlot?: ReactNode }) {
           <div className="flex items-center gap-1.5">
             <Link
               href="/login"
-              className="hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] text-zinc-300 transition-colors hover:text-white sm:flex"
+              className="hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] text-fg-secondary transition-colors hover:text-fg sm:flex"
             >
               Ask Us
               <ArrowRight className="size-3.5" />
             </Link>
             <Link
               href="/signup"
-              className="flex h-9 items-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
             >
               Get Started
               <ArrowRight className="size-3.5" />

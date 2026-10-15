@@ -95,6 +95,12 @@ Tanpa ini, build/runtime melempar `crypto.getRandomValues() while prerendering` 
 
 **Prefetch rule:** jangan render `<Link>` ke route ber-guard sebelum prasyaratnya selesai (prefetch → redirect ter-cache → klik salah arah). Implementasi: CTA dashboard, StepList, dan ChatMenuCard semua kondisional (span terkunci vs Link).
 
+### 3.1 Sistem tema (dark/light)
+- Token semantik didefinisikan di `app/globals.css`: variabel `--theme-*` di `:root` (dark) dan `.light`, dipetakan ke Tailwind via `@theme inline` (`bg-surface`, `text-fg-muted`, `border-overlay/10`, dst. — semua nilai runtime, bukan baked).
+- Pilihan user disimpan di localStorage `terangin-theme`; default mengikuti `prefers-color-scheme`. Script inline kecil di root layout (`app/layout.tsx`) menambahkan class `.light` ke `<html>` sebelum paint (anti-FOUC).
+- `lib/theme.ts`: `setTheme` / `subscribeTheme` / snapshot untuk `useSyncExternalStore`; switch UI di `/akun` (`components/account/ThemeSwitch.tsx`).
+- Aturan: komponen app tidak boleh memakai warna literal (`text-white`, `bg-[#161616]`, zinc-*, `white/alpha`); selalu pakai token. Halaman cetak (`/cetak/laporan`) pengecualian karena selalu light.
+
 ---
 
 ## 4. Auth & session
@@ -207,6 +213,8 @@ terangin/
 │   ├── globals.css             # @import tailwindcss + @theme inline font + bg #050505
 │   ├── page.tsx                # Landing: komposisi 8 komponen + Suspense AuthNav
 │   ├── signup/page.tsx         # Stub form signup (client form + server action)
+│   ├── cetak/laporan/page.tsx  # Laporan lengkap A/B/C (asesmen + nilai + analisis), light, A4 print, tanpa AppShell
+│   ├── akun/page.tsx           # Pengaturan akun: Tampilan (tema) + Zona bahaya (hapus akun)
 │   ├── login/page.tsx          # Stub form login
 │   ├── onboarding/page.tsx     # Guard chain awal; render BasicsForm | TourSlides
 │   ├── dashboard/page.tsx      # Sapaan + chip profil + 4 kartu langkah (CTA kontekstual)
@@ -243,9 +251,13 @@ terangin/
 │   ├── grades/GradeInput.tsx                    # Input nilai lengkap (lihat §7.2)
 │   ├── analysis/AnalysisPanel.tsx               # Intro/progress/hasil analisis (lihat §7.3)
 │   ├── chat/ChatPanel.tsx                       # UI chat (lihat §7.4)
-│   └── profile/ProfileForm.tsx                  # Edit profil + chips minat
+│   ├── profile/ProfileForm.tsx                  # Edit profil + chips minat
+│   ├── account/ThemeSwitch.tsx                  # Segmented Gelap/Terang (useSyncExternalStore + layoutId pill)
+│   ├── account/DeleteAccountCard.tsx            # Zona bahaya: password + ketik HAPUS → deleteAccountAction
+│   └── cetak/PrintToolbar.tsx                   # Toolbar cetak laporan (Kembali ke /analisis + Cetak/Simpan PDF, print:hidden)
 ├── lib/
-│   ├── validation.ts           # Semua schema zod (lihat §7.5)
+│   ├── validation.ts           # Semua schema zod (lihat §7.5) + deleteAccountSchema
+│   ├── theme.ts                # Baca/tulis tema (localStorage terangin-theme) + subscribe untuk useSyncExternalStore
 │   ├── grades.ts               # MIN_SUBJECTS_PER_SEMESTER, defaultSemestersFor, helper shortfall (lihat §7.2)
 │   ├── onboarding.ts           # getUserProfile, getJourneySteps, tipe JourneyStep
 │   ├── actions/
@@ -255,6 +267,8 @@ terangin/
 │   │   ├── grades.ts           # saveGradeAction, deleteGradeAction, completeGradesAction
 │   │   ├── profile.ts          # updateProfileAction, restartTourAction
 │   │   └── analysis.ts         # runAnalysisAction (skoring deterministik → narasi AI → persist transaksional)
+│   ├── assessment/
+│   │   └── summary.ts          # DIMENSION_LABELS/CATEGORY_LABELS + computeDimensionScores + getAssessmentSummary (dokumen cetak)
 │   ├── analysis/
 │   │   ├── prepare.ts          # prepareAnalysisData(userId): agregasi lengkap + dimensionScores (lihat §9.1)
 │   │   ├── prompt.ts           # buildSystemPrompt(), buildUserPrompt(data, ranked): prompt narasi
@@ -325,6 +339,7 @@ Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` 
 | `updateProfileAction` | profile | FormData | update nama/sekolah/kelas/minat → `{ok}` (indikator "Tersimpan") |
 | `restartTourAction` | profile | — | reset `onboarding_completed_at` → redirect `/onboarding` |
 | `resetChatAction` | chat | — | hapus semua `chat_sessions` user (cascade ke `chat_messages`) → `{ok}` / `{ok:false,error}` |
+| `deleteAccountAction` | account | FormData (password, confirmation) | verifikasi password (bcrypt) + konfirmasi `HAPUS` → delete user (cascade semua data) → signOut `/`; `{error}` bila gagal |
 | `runAnalysisAction` | analysis | — | pipeline AI + persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
 | `runAnalysisAction` | analysis | — | skoring deterministik (bobot 30/25/20/15/10) → narasi AI → persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
 

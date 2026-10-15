@@ -31,7 +31,7 @@ export default function TourSlides() {
 
   return (
     <div className="mt-8">
-      <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-[#161616] px-7 py-10 sm:px-10 sm:py-12">
+      <div className="relative overflow-hidden rounded-2xl border border-overlay/8 bg-surface px-7 py-10 sm:px-10 sm:py-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
@@ -51,10 +51,10 @@ export default function TourSlides() {
             >
               <TeraMark className="size-14" />
             </motion.div>
-            <h2 className="mt-6 text-xl font-medium tracking-tight text-white sm:text-2xl">
+            <h2 className="mt-6 text-xl font-medium tracking-tight text-fg sm:text-2xl">
               {slide.title}
             </h2>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-zinc-400">
+            <p className="mt-3 max-w-lg text-sm leading-relaxed text-fg-muted">
               {slide.body}
             </p>
           </motion.div>
@@ -66,7 +66,7 @@ export default function TourSlides() {
           type="button"
           onClick={() => setIndex((value) => Math.max(0, value - 1))}
           disabled={index === 0}
-          className="h-10 rounded-full border border-white/10 px-5 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-10 rounded-full border border-overlay/10 px-5 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
         >
           Kembali
         </button>
@@ -77,8 +77,8 @@ export default function TourSlides() {
               key={item.title}
               className={
                 i === index
-                  ? "size-1.5 rounded-full bg-white"
-                  : "size-1.5 rounded-full bg-white/20"
+                  ? "size-1.5 rounded-full bg-primary"
+                  : "size-1.5 rounded-full bg-overlay/20"
               }
             />
           ))}
@@ -88,7 +88,7 @@ export default function TourSlides() {
           <form action={completeOnboardingAction}>
             <button
               type="submit"
-              className="h-10 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+              className="h-10 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
             >
               Mulai perjalananmu
             </button>
@@ -97,7 +97,7 @@ export default function TourSlides() {
           <button
             type="button"
             onClick={() => setIndex((value) => value + 1)}
-            className="h-10 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+            className="h-10 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
           >
             Lanjut
           </button>

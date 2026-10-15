@@ -20,9 +20,9 @@ function FeatureCard({
 }) {
   return (
     <FadeIn delay={delay} className="h-full">
-      <div className="flex h-full flex-col rounded-2xl border border-white/6 bg-[#161616] p-6 sm:p-7">
-        <h3 className="text-[15px] font-medium text-white">{title}</h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-zinc-400">
+      <div className="flex h-full flex-col rounded-2xl border border-overlay/6 bg-surface p-6 sm:p-7">
+        <h3 className="text-[15px] font-medium text-fg">{title}</h3>
+        <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
           {description}
         </p>
         <div className="mt-6 flex flex-1 flex-col justify-end">{children}</div>
@@ -36,10 +36,10 @@ export default function Features() {
     <section id="fitur" className="scroll-mt-20 px-4 pt-20 sm:px-6 sm:pt-28">
       <div className="mx-auto max-w-5xl">
         <FadeIn className="text-center">
-          <h2 className="text-3xl font-medium tracking-tight text-white sm:text-4xl">
+          <h2 className="text-3xl font-medium tracking-tight text-fg sm:text-4xl">
             Terang.in Mudah Dipakai
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-fg-muted sm:text-[15px]">
             Dari daftar sampai punya rencana, semuanya dalam satu alur yang
             jelas. Isi profil, jawab asesmen, lihat hasilnya, ngobrol sama
             Tera, lalu pilih jurusanmu. Nggak perlu ribet, nggak perlu

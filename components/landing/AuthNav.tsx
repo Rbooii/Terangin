@@ -9,14 +9,14 @@ export function AuthButtons() {
     <div className="flex items-center gap-1.5">
       <Link
         href="/login"
-        className="hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] text-zinc-300 transition-colors hover:text-white sm:flex"
+        className="hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] text-fg-secondary transition-colors hover:text-fg sm:flex"
       >
         Ask Us
         <ArrowRight className="size-3.5" />
       </Link>
       <Link
         href="/signup"
-        className="flex h-9 items-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+        className="flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
       >
         Get Started
         <ArrowRight className="size-3.5" />
@@ -39,9 +39,9 @@ export default async function AuthNav() {
     <div className="flex items-center gap-1.5">
       <Link
         href="/dashboard"
-        className="flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 pl-1.5 pr-3 text-[13px] text-zinc-200 transition-colors hover:border-white/25 hover:bg-white/10"
+        className="flex h-9 items-center gap-2 rounded-full border border-overlay/10 bg-overlay/5 pl-1.5 pr-3 text-[13px] text-fg-soft transition-colors hover:border-overlay/25 hover:bg-overlay/10"
       >
-        <span className="grid size-6 place-items-center rounded-full bg-white text-[10px] font-semibold text-black">
+        <span className="grid size-6 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-fg">
           {initial}
         </span>
         <span className="max-w-28 truncate">{session.user.name}</span>
@@ -49,7 +49,7 @@ export default async function AuthNav() {
       <form action={logoutAction}>
         <button
           type="submit"
-          className="flex h-9 items-center rounded-full border border-white/10 px-3.5 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+          className="flex h-9 items-center rounded-full border border-overlay/10 px-3.5 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
         >
           Keluar
         </button>

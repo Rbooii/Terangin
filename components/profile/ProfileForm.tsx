@@ -10,7 +10,7 @@ import { INTEREST_OPTIONS } from "@/components/onboarding/BasicsForm";
 const MAX_INTERESTS = 5;
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-white/25 focus:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50";
+  "h-11 w-full rounded-xl border border-overlay/10 bg-overlay/[0.04] px-4 text-sm text-fg outline-none transition-colors placeholder:text-fg-faintest focus:border-overlay/25 focus:bg-overlay/[0.06] disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function ProfileForm({
   profile,
@@ -42,13 +42,13 @@ export default function ProfileForm({
   return (
     <form
       action={formAction}
-      className="rounded-2xl border border-white/8 bg-[#161616] p-6 sm:p-7"
+      className="rounded-2xl border border-overlay/8 bg-surface p-6 sm:p-7"
     >
       <div className="space-y-6">
         <div className="space-y-2">
           <label
             htmlFor="fullName"
-            className="block text-[12px] font-medium text-zinc-400"
+            className="block text-[12px] font-medium text-fg-muted"
           >
             Nama lengkap
           </label>
@@ -67,7 +67,7 @@ export default function ProfileForm({
         <div className="space-y-2">
           <label
             htmlFor="email"
-            className="block text-[12px] font-medium text-zinc-400"
+            className="block text-[12px] font-medium text-fg-muted"
           >
             Email
           </label>
@@ -82,7 +82,7 @@ export default function ProfileForm({
         <div className="space-y-2">
           <label
             htmlFor="schoolOrigin"
-            className="block text-[12px] font-medium text-zinc-400"
+            className="block text-[12px] font-medium text-fg-muted"
           >
             Asal sekolah
           </label>
@@ -101,7 +101,7 @@ export default function ProfileForm({
         <div className="space-y-2">
           <label
             htmlFor="gradeLevel"
-            className="block text-[12px] font-medium text-zinc-400"
+            className="block text-[12px] font-medium text-fg-muted"
           >
             Kelas
           </label>
@@ -110,7 +110,7 @@ export default function ProfileForm({
             name="gradeLevel"
             defaultValue={profile.gradeLevel ? String(profile.gradeLevel) : ""}
             required
-            className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-colors focus:border-white/25 focus:bg-white/[0.06] [&>option]:bg-[#161616]"
+            className="h-11 w-full appearance-none rounded-xl border border-overlay/10 bg-overlay/[0.04] px-4 text-sm text-fg outline-none transition-colors focus:border-overlay/25 focus:bg-overlay/[0.06] [&>option]:bg-surface"
           >
             <option value="" disabled>
               Pilih kelas kamu
@@ -123,10 +123,10 @@ export default function ProfileForm({
 
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
-            <span className="text-[12px] font-medium text-zinc-400">
+            <span className="text-[12px] font-medium text-fg-muted">
               Minat awal
             </span>
-            <span className="text-[11px] text-zinc-600">
+            <span className="text-[11px] text-fg-faintest">
               {selected.length}/{MAX_INTERESTS} dipilih
             </span>
           </div>
@@ -140,10 +140,10 @@ export default function ProfileForm({
                   key={interest}
                   className={
                     isSelected
-                      ? "cursor-pointer rounded-full border border-white/70 bg-white px-3.5 py-1.5 text-[12px] font-medium text-black transition-colors"
+                      ? "cursor-pointer rounded-full border border-overlay/70 bg-primary px-3.5 py-1.5 text-[12px] font-medium text-primary-fg transition-colors"
                       : isDisabled
-                        ? "cursor-not-allowed rounded-full border border-white/8 px-3.5 py-1.5 text-[12px] text-zinc-600"
-                        : "cursor-pointer rounded-full border border-white/12 px-3.5 py-1.5 text-[12px] text-zinc-300 transition-colors hover:border-white/30 hover:text-white"
+                        ? "cursor-not-allowed rounded-full border border-overlay/8 px-3.5 py-1.5 text-[12px] text-fg-faintest"
+                        : "cursor-pointer rounded-full border border-overlay/12 px-3.5 py-1.5 text-[12px] text-fg-secondary transition-colors hover:border-overlay/30 hover:text-fg"
                   }
                 >
                   <input
@@ -167,15 +167,15 @@ export default function ProfileForm({
         <button
           type="submit"
           disabled={pending}
-          className="h-11 rounded-full bg-white px-6 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-11 rounded-full bg-primary px-6 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? "Menyimpan..." : "Simpan"}
         </button>
         {state?.ok && !pending && (
-          <span className="text-[12px] text-zinc-400">Tersimpan</span>
+          <span className="text-[12px] text-fg-muted">Tersimpan</span>
         )}
         {state?.error && (
-          <span className="text-[12px] text-red-400">{state.error}</span>
+          <span className="text-[12px] text-danger">{state.error}</span>
         )}
       </div>
     </form>

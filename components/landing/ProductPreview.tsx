@@ -70,13 +70,13 @@ export default function ProductPreview() {
       className="px-4 pt-12 sm:px-6 sm:pt-16"
     >
       <FadeIn>
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-white/8 bg-[#141414] shadow-[0_60px_120px_-40px_rgba(0,0,0,0.9)]">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-overlay/8 bg-bg shadow-[0_60px_120px_-40px_rgba(0,0,0,0.9)]">
           <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr]">
-            <div className="flex flex-col border-b border-white/6 p-5 sm:p-6 md:border-b-0 md:border-r">
+            <div className="flex flex-col border-b border-overlay/6 p-5 sm:p-6 md:border-b-0 md:border-r">
               <div className="flex items-center gap-2">
                 <TeraMark className="size-4" />
-                <span className="text-[13px] font-medium text-zinc-200">
-                  Terang<span className="text-zinc-500">.in</span>
+                <span className="text-[13px] font-medium text-fg-soft">
+                  Terang<span className="text-fg-faint">.in</span>
                 </span>
               </div>
 
@@ -89,33 +89,33 @@ export default function ProductPreview() {
                 <div
                   className={`flex items-center gap-3 rounded-xl border p-3.5 transition-all duration-500 ${
                     chatStarted
-                      ? "border-white/20 bg-[#1e1e1e]"
-                      : "border-white/8 bg-[#1b1b1b] opacity-50"
+                      ? "border-overlay/20 bg-surface-elevated"
+                      : "border-overlay/8 bg-surface-elevated opacity-50"
                   }`}
                 >
                   <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
                     <TeraMark className="size-5" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-zinc-200">
+                    <span className="block text-[13px] font-medium text-fg-soft">
                       Chat sama Tera
                     </span>
-                    <span className="block truncate text-[11px] text-zinc-500">
+                    <span className="block truncate text-[11px] text-fg-faint">
                       {chatStarted
                         ? "Lagi ngobrol"
                         : "Terbuka setelah analisis selesai"}
                     </span>
                   </span>
                 </div>
-                <div className="flex items-center gap-3 rounded-xl border border-white/8 bg-[#1b1b1b] p-3.5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[12px] font-semibold text-black">
+                <div className="flex items-center gap-3 rounded-xl border border-overlay/8 bg-surface-elevated p-3.5">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-semibold text-primary-fg">
                     MK
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[13px] font-medium text-zinc-200">
+                    <span className="block truncate text-[13px] font-medium text-fg-soft">
                       Michael Kevin
                     </span>
-                    <span className="block text-[11px] text-zinc-500">
+                    <span className="block text-[11px] text-fg-faint">
                       Siswa SMA
                     </span>
                   </span>

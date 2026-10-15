@@ -343,6 +343,21 @@ export default function GradeInput({
   }
 
   function addRow(subject: string) {
+    const draft = rows.find(
+      (row) =>
+        row.semester === activeSemester &&
+        !row.persisted &&
+        row.subject.trim() === "",
+    );
+
+    if (draft) {
+      if (subject) {
+        updateRow(draft.key, { subject, status: "idle", error: undefined });
+      }
+      setLastAddedKey(draft.key);
+      return;
+    }
+
     const row = makeRow({ subject, semester: activeSemester });
     setRows((prev) => [...prev, row]);
     setLastAddedKey(row.key);
@@ -367,7 +382,7 @@ export default function GradeInput({
   return (
     <div>
       {completed && (
-        <div className="mb-5 rounded-xl border border-emerald-400/20 bg-emerald-400/6 px-4 py-3 text-[12px] leading-relaxed text-emerald-200/90">
+        <div className="mb-5 rounded-xl border border-success/20 bg-success/6 px-4 py-3 text-[12px] leading-relaxed text-success/90">
           Nilai rapormu udah tersimpan. Kamu masih bisa nambahin atau ngubah
           nilai kapan aja.
         </div>
@@ -381,8 +396,8 @@ export default function GradeInput({
             onClick={() => setActiveSemester(semester)}
             className={
               semester === activeSemester
-                ? "h-9 rounded-full bg-white px-4 text-[12px] font-medium text-black"
-                : "h-9 rounded-full border border-white/12 px-4 text-[12px] text-zinc-300 transition-colors hover:border-white/30 hover:text-white"
+                ? "h-9 rounded-full bg-primary px-4 text-[12px] font-medium text-primary-fg"
+                : "h-9 rounded-full border border-overlay/12 px-4 text-[12px] text-fg-secondary transition-colors hover:border-overlay/30 hover:text-fg"
             }
           >
             Semester {semester}
@@ -392,23 +407,23 @@ export default function GradeInput({
           <button
             type="button"
             onClick={addSemester}
-            className="h-9 rounded-full border border-dashed border-white/15 px-4 text-[12px] text-zinc-400 transition-colors hover:border-white/30 hover:text-white"
+            className="h-9 rounded-full border border-dashed border-overlay/15 px-4 text-[12px] text-fg-muted transition-colors hover:border-overlay/30 hover:text-fg"
           >
             + Semester
           </button>
         )}
       </div>
 
-      <div className="mt-5 rounded-2xl border border-white/8 bg-[#161616] p-6 sm:p-7">
+      <div className="mt-5 rounded-2xl border border-overlay/8 bg-surface p-6 sm:p-7">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[15px] font-medium text-white">
+          <h2 className="text-[15px] font-medium text-fg">
             Semester {activeSemester}
           </h2>
           <span
             className={
               activeIsRequired && persistedCount < MIN_SUBJECTS_PER_SEMESTER
-                ? "text-[11px] text-amber-300/80"
-                : "text-[11px] text-zinc-500"
+                ? "text-[11px] text-warning/80"
+                : "text-[11px] text-fg-faint"
             }
           >
             {persistedCount >= MIN_SUBJECTS_PER_SEMESTER
@@ -421,7 +436,7 @@ export default function GradeInput({
 
         <div className="mt-5 space-y-2.5">
           {semesterRows.length === 0 && ghostSubjects.length === 0 && (
-            <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-[12px] text-zinc-500">
+            <p className="rounded-xl border border-dashed border-overlay/10 px-4 py-6 text-center text-[12px] text-fg-faint">
               Belum ada mapel di semester ini. Tambahin lewat chip di bawah,
               minimal 7 mapel per semester.
             </p>
@@ -431,7 +446,7 @@ export default function GradeInput({
             <div key={row.key}>
               <div className="flex items-center gap-2">
                 {row.persisted ? (
-                  <span className="h-10 min-w-0 flex-1 truncate rounded-xl border border-white/6 bg-white/[0.02] px-3 text-[13px] leading-10 text-zinc-300">
+                  <span className="h-10 min-w-0 flex-1 truncate rounded-xl border border-overlay/6 bg-overlay/[0.02] px-3 text-[13px] leading-10 text-fg-secondary">
                     {row.subject}
                   </span>
                 ) : (
@@ -444,7 +459,7 @@ export default function GradeInput({
                     placeholder="Nama mata pelajaran"
                     maxLength={50}
                     autoFocus={row.key === lastAddedKey}
-                    className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-white/25"
+                    className="h-10 min-w-0 flex-1 rounded-xl border border-overlay/10 bg-overlay/[0.04] px-3 text-[13px] text-fg outline-none transition-colors placeholder:text-fg-faintest focus:border-overlay/25"
                   />
                 )}
                 <input
@@ -462,29 +477,29 @@ export default function GradeInput({
                   placeholder="0-100"
                   autoFocus={row.persisted && row.key === lastAddedKey}
                   aria-label={`Nilai ${row.subject || "mapel baru"}`}
-                  className="h-10 w-24 shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-right text-[13px] text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-white/25"
+                  className="h-10 w-24 shrink-0 rounded-xl border border-overlay/10 bg-overlay/[0.04] px-3 text-right text-[13px] text-fg outline-none transition-colors placeholder:text-fg-faintest focus:border-overlay/25"
                 />
                 <button
                   type="button"
                   onClick={() => void removeRow(row)}
                   disabled={row.status === "saving"}
                   aria-label={`Hapus ${row.subject || "mapel"}`}
-                  className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/10 text-zinc-500 transition-colors hover:border-red-400/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="grid size-10 shrink-0 place-items-center rounded-xl border border-overlay/10 text-fg-faint transition-colors hover:border-danger/40 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <TrashIcon className="size-4" />
                 </button>
               </div>
               <div className="mt-1 flex h-4 items-center pl-1">
                 {row.error ? (
-                  <span className="text-[11px] text-red-400">{row.error}</span>
+                  <span className="text-[11px] text-danger">{row.error}</span>
                 ) : row.status === "saving" ? (
-                  <span className="text-[11px] text-zinc-600">
+                  <span className="text-[11px] text-fg-faintest">
                     Menyimpan...
                   </span>
                 ) : row.status === "saved" ? (
-                  <span className="text-[11px] text-zinc-600">Tersimpan</span>
+                  <span className="text-[11px] text-fg-faintest">Tersimpan</span>
                 ) : !row.persisted && row.subject.trim() && !row.score.trim() ? (
-                  <span className="text-[11px] text-zinc-600">
+                  <span className="text-[11px] text-fg-faintest">
                     Isi nilainya buat nyimpen.
                   </span>
                 ) : null}
@@ -494,7 +509,7 @@ export default function GradeInput({
 
           {ghostSubjects.length > 0 && (
             <div className="space-y-2.5 pt-3">
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-fg-faint">
                 Saran dari Semester 1
               </p>
               {ghostSubjects.map((subject) => {
@@ -503,7 +518,7 @@ export default function GradeInput({
                 return (
                   <div key={key}>
                     <div className="flex items-center gap-2">
-                      <span className="h-10 min-w-0 flex-1 truncate rounded-xl border border-dashed border-white/10 px-3 text-[13px] leading-10 text-zinc-500">
+                      <span className="h-10 min-w-0 flex-1 truncate rounded-xl border border-dashed border-overlay/10 px-3 text-[13px] leading-10 text-fg-faint">
                         {subject}
                       </span>
                       <input
@@ -525,23 +540,23 @@ export default function GradeInput({
                         inputMode="decimal"
                         placeholder="0-100"
                         aria-label={`Nilai ${subject} (saran)`}
-                        className="h-10 w-24 shrink-0 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 text-right text-[13px] text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-white/25 focus:bg-white/[0.04]"
+                        className="h-10 w-24 shrink-0 rounded-xl border border-dashed border-overlay/10 bg-overlay/[0.02] px-3 text-right text-[13px] text-fg outline-none transition-colors placeholder:text-fg-faintest focus:border-overlay/25 focus:bg-overlay/[0.04]"
                       />
                       <button
                         type="button"
                         onClick={() => dismissGhost(subject, activeSemester)}
-                        className="h-10 shrink-0 rounded-xl border border-white/10 px-3 text-[12px] text-zinc-500 transition-colors hover:border-white/25 hover:text-zinc-200"
+                        className="h-10 shrink-0 rounded-xl border border-overlay/10 px-3 text-[12px] text-fg-faint transition-colors hover:border-overlay/25 hover:text-fg-soft"
                       >
                         Lewati
                       </button>
                     </div>
                     <div className="mt-1 flex h-4 items-center pl-1">
                       {state?.error ? (
-                        <span className="text-[11px] text-red-400">
+                        <span className="text-[11px] text-danger">
                           {state.error}
                         </span>
                       ) : state?.status === "saving" ? (
-                        <span className="text-[11px] text-zinc-600">
+                        <span className="text-[11px] text-fg-faintest">
                           Menyimpan...
                         </span>
                       ) : null}
@@ -561,14 +576,14 @@ export default function GradeInput({
 
         {presetsToShow.length > 0 && (
           <div className="mt-4">
-            <p className="text-[11px] text-zinc-500">Tambah cepat</p>
+            <p className="text-[11px] text-fg-faint">Tambah cepat</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {presetsToShow.map((subject) => (
                 <button
                   key={subject}
                   type="button"
                   onClick={() => addRow(subject)}
-                  className="rounded-full border border-white/12 px-3 py-1.5 text-[12px] text-zinc-300 transition-colors hover:border-white/30 hover:text-white"
+                  className="rounded-full border border-overlay/12 px-3 py-1.5 text-[12px] text-fg-secondary transition-colors hover:border-overlay/30 hover:text-fg"
                 >
                   + {subject}
                 </button>
@@ -580,31 +595,31 @@ export default function GradeInput({
         <button
           type="button"
           onClick={() => addRow("")}
-          className="mt-3 h-10 w-full rounded-full border border-dashed border-white/15 text-[13px] text-zinc-400 transition-colors hover:border-white/30 hover:text-white"
+          className="mt-3 h-10 w-full rounded-full border border-dashed border-overlay/15 text-[13px] text-fg-muted transition-colors hover:border-overlay/30 hover:text-fg"
         >
           Tambah mata pelajaran
         </button>
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-[12px] text-zinc-500">
+        <span className="text-[12px] text-fg-faint">
           {totalPersisted > 0
             ? `${totalPersisted} nilai tersimpan`
             : "Belum ada nilai tersimpan"}
         </span>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {!completed && !requirementMet && (
-            <span className="max-w-sm text-[12px] leading-relaxed text-amber-300/80">
+            <span className="max-w-sm text-[12px] leading-relaxed text-warning/80">
               {formatShortfallMessage(shortfalls)}
             </span>
           )}
           {finishError && (
-            <span className="text-[12px] text-red-400">{finishError}</span>
+            <span className="text-[12px] text-danger">{finishError}</span>
           )}
           {completed ? (
             <a
               href="/dashboard"
-              className="flex h-10 items-center justify-center rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+              className="flex h-10 items-center justify-center rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
             >
               Kembali ke dashboard
             </a>
@@ -613,7 +628,7 @@ export default function GradeInput({
               type="button"
               onClick={handleFinish}
               disabled={!requirementMet || finishing}
-              className="h-10 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-10 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
             >
               {finishing ? "Menyimpan..." : "Selesai"}
             </button>

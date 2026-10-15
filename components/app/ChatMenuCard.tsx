@@ -20,14 +20,14 @@ export default function ChatMenuCard({ unlocked }: { unlocked: boolean }) {
     return (
       <div
         aria-disabled="true"
-        className="flex cursor-not-allowed items-center gap-3 rounded-xl border border-white/8 bg-[#1b1b1b] p-3.5 opacity-50"
+        className="flex cursor-not-allowed items-center gap-3 rounded-xl border border-overlay/8 bg-surface-elevated p-3.5 opacity-50"
       >
         <ChatTile />
         <span className="min-w-0">
-          <span className="block text-[13px] font-medium text-zinc-200">
+          <span className="block text-[13px] font-medium text-fg-soft">
             Chat sama Tera
           </span>
-          <span className="block truncate text-[11px] text-zinc-500">
+          <span className="block truncate text-[11px] text-fg-faint">
             Terbuka setelah analisis selesai
           </span>
         </span>
@@ -41,16 +41,16 @@ export default function ChatMenuCard({ unlocked }: { unlocked: boolean }) {
       aria-current={active ? "page" : undefined}
       className={
         active
-          ? "flex items-center gap-3 rounded-xl border border-white/20 bg-[#1e1e1e] p-3.5"
-          : "flex items-center gap-3 rounded-xl border border-white/8 bg-[#1b1b1b] p-3.5 transition-colors hover:border-white/20"
+          ? "flex items-center gap-3 rounded-xl border border-overlay/20 bg-surface-elevated p-3.5"
+          : "flex items-center gap-3 rounded-xl border border-overlay/8 bg-surface-elevated p-3.5 transition-colors hover:border-overlay/20"
       }
     >
       <ChatTile />
       <span className="min-w-0">
-        <span className="block text-[13px] font-medium text-zinc-200">
+        <span className="block text-[13px] font-medium text-fg-soft">
           Chat sama Tera
         </span>
-        <span className="block truncate text-[11px] text-zinc-500">
+        <span className="block truncate text-[11px] text-fg-faint">
           {active ? "Lagi ngobrol" : "Kenapa aku cocok di Psikologi?"}
         </span>
       </span>

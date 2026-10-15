@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { computeDimensionScores } from "@/lib/assessment/summary";
 import {
   academicRecords,
   majors,
@@ -70,21 +71,7 @@ export async function prepareAnalysisData(userId: string) {
     }),
   ) as Record<CategoryName, number | null>;
 
-  const dimensionValues = new Map<string, number[]>();
-  for (const row of answered) {
-    if (!row.dimension) continue;
-    const list = dimensionValues.get(row.dimension) ?? [];
-    list.push(row.score);
-    dimensionValues.set(row.dimension, list);
-  }
-  const dimensionScores: Record<string, number | null> = {};
-  for (const [dimension, values] of dimensionValues) {
-    const average =
-      values.reduce((sum, value) => sum + value, 0) / values.length;
-    dimensionScores[dimension] = Number(
-      (((average - 1) / 4) * 100).toFixed(1),
-    );
-  }
+  const dimensionScores = computeDimensionScores(answered);
 
   const sortedAnswers = [...answered].sort((a, b) => b.score - a.score);
   const topAnswers = sortedAnswers

@@ -59,14 +59,14 @@ export default async function AssessmentPage() {
     <AppShell user={{ name: profile.fullName }} steps={steps}>
       {completedAt ? (
         <>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">
             Asesmen selesai
           </h1>
-          <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
             Kamu sudah menjawab {answers.length} soal. Jawabanmu tersimpan dan
             siap dianalisis bareng data akademikmu.
           </p>
-          <p className="mt-2 text-[12px] text-zinc-500">
+          <p className="mt-2 text-[12px] text-fg-faint">
             Diselesaikan{" "}
             {new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(
               completedAt,
@@ -76,14 +76,14 @@ export default async function AssessmentPage() {
             <form action={restartAssessmentAction}>
               <button
                 type="submit"
-                className="h-10 rounded-full border border-white/10 px-5 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+                className="h-10 rounded-full border border-overlay/10 px-5 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
               >
                 Ulangi asesmen
               </button>
             </form>
             <Link
               href="/dashboard"
-              className="flex h-10 items-center rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+              className="flex h-10 items-center rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
             >
               Kembali ke dashboard
             </Link>
@@ -91,20 +91,20 @@ export default async function AssessmentPage() {
         </>
       ) : bank.length === 0 ? (
         <>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">
             Asesmen Minat & Bakat
           </h1>
-          <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
             Bank soal belum tersedia. Jalankan seed dulu lewat perintah
             db:seed.
           </p>
         </>
       ) : (
         <>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">
             Asesmen Minat & Bakat
           </h1>
-          <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
             {bank.length} soal singkat soal minat, kepribadian, bakat, dan
             gaya belajarmu. Tiap soal punya waktu 15 detik, dan sisanya
             tersimpan kalau kamu pindah soal.

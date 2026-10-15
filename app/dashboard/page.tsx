@@ -39,10 +39,10 @@ export default async function DashboardPage() {
 
   return (
     <AppShell user={{ name: profile.fullName }} steps={steps}>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">
+      <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Halo, {firstName}
       </h1>
-      <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-400">
+      <p className="mt-2 max-w-md text-[13px] leading-relaxed text-fg-muted">
         Profil kamu udah siap. Lanjut ke langkah berikutnya biar Tera makin
         kenal kamu.
       </p>
@@ -50,19 +50,19 @@ export default async function DashboardPage() {
       {(profile.schoolOrigin || profile.gradeLevel || interests.length > 0) && (
         <div className="mt-6 flex flex-wrap gap-2">
           {profile.schoolOrigin && (
-            <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-zinc-400">
+            <span className="rounded-full border border-overlay/10 px-3 py-1 text-[11px] text-fg-muted">
               {profile.schoolOrigin}
             </span>
           )}
           {profile.gradeLevel && (
-            <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-zinc-400">
+            <span className="rounded-full border border-overlay/10 px-3 py-1 text-[11px] text-fg-muted">
               Kelas {profile.gradeLevel}
             </span>
           )}
           {interests.map((interest) => (
             <span
               key={interest}
-              className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-zinc-400"
+              className="rounded-full border border-overlay/10 px-3 py-1 text-[11px] text-fg-muted"
             >
               {interest}
             </span>
@@ -71,24 +71,24 @@ export default async function DashboardPage() {
       )}
 
       <section className="mt-8 grid gap-5">
-        <div className="rounded-2xl border border-white/8 bg-[#161616] p-6">
+        <div className="rounded-2xl border border-overlay/8 bg-surface p-6">
           <div className="flex items-center justify-between gap-3">
-            <span className="rounded-md bg-emerald-400/10 px-2 py-1 text-[10px] text-emerald-300">
+            <span className="rounded-md bg-success/10 px-2 py-1 text-[10px] text-success">
               Langkah 2
             </span>
             {assessmentDone ? (
-              <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                <span className="size-1.5 rounded-full bg-emerald-400/80" />
+              <span className="flex items-center gap-1.5 text-[11px] text-fg-muted">
+                <span className="size-1.5 rounded-full bg-success/80" />
                 Selesai
               </span>
             ) : (
-              <span className="text-[11px] text-zinc-500">Belum dimulai</span>
+              <span className="text-[11px] text-fg-faint">Belum dimulai</span>
             )}
           </div>
-          <h2 className="mt-4 text-[15px] font-medium text-white">
+          <h2 className="mt-4 text-[15px] font-medium text-fg">
             Asesmen Bakat
           </h2>
-          <p className="mt-2 text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
             Kuis interaktif buat gali minat, bakat, kepribadian, dan gaya
             belajarmu. Nggak ada jawaban benar atau salah.
           </p>
@@ -96,32 +96,32 @@ export default async function DashboardPage() {
             href="/assessment"
             className={
               assessmentDone
-                ? "mt-5 flex h-10 w-full items-center justify-center rounded-full border border-white/10 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
-                : "mt-5 flex h-10 w-full items-center justify-center rounded-full bg-white text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+                ? "mt-5 flex h-10 w-full items-center justify-center rounded-full border border-overlay/10 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
+                : "mt-5 flex h-10 w-full items-center justify-center rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
             }
           >
             {assessmentDone ? "Ulangi asesmen" : "Mulai asesmen"}
           </Link>
         </div>
 
-        <div className="rounded-2xl border border-white/8 bg-[#161616] p-6">
+        <div className="rounded-2xl border border-overlay/8 bg-surface p-6">
           <div className="flex items-center justify-between gap-3">
-            <span className="rounded-md bg-emerald-400/10 px-2 py-1 text-[10px] text-emerald-300">
+            <span className="rounded-md bg-success/10 px-2 py-1 text-[10px] text-success">
               Langkah 3
             </span>
             {gradesDone ? (
-              <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                <span className="size-1.5 rounded-full bg-emerald-400/80" />
+              <span className="flex items-center gap-1.5 text-[11px] text-fg-muted">
+                <span className="size-1.5 rounded-full bg-success/80" />
                 Selesai
               </span>
             ) : (
-              <span className="text-[11px] text-zinc-500">Belum dimulai</span>
+              <span className="text-[11px] text-fg-faint">Belum dimulai</span>
             )}
           </div>
-          <h2 className="mt-4 text-[15px] font-medium text-white">
+          <h2 className="mt-4 text-[15px] font-medium text-fg">
             Input Nilai
           </h2>
-          <p className="mt-2 text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
             Masukin nilai rapor tiap semester. Tambahin mata pelajarannya
             sebanyak yang kamu mau.
           </p>
@@ -130,37 +130,37 @@ export default async function DashboardPage() {
               href="/nilai"
               className={
                 gradesDone
-                  ? "mt-5 flex h-10 w-full items-center justify-center rounded-full border border-white/10 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
-                  : "mt-5 flex h-10 w-full items-center justify-center rounded-full bg-white text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+                  ? "mt-5 flex h-10 w-full items-center justify-center rounded-full border border-overlay/10 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
+                  : "mt-5 flex h-10 w-full items-center justify-center rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
               }
             >
               {gradesDone ? "Ubah nilai" : "Mulai input nilai"}
             </Link>
           ) : (
-            <span className="mt-5 flex h-10 w-full cursor-not-allowed items-center justify-center rounded-full border border-white/10 text-[13px] text-zinc-500">
+            <span className="mt-5 flex h-10 w-full cursor-not-allowed items-center justify-center rounded-full border border-overlay/10 text-[13px] text-fg-faint">
               Selesaikan asesmen dulu
             </span>
           )}
         </div>
 
-        <div className="rounded-2xl border border-white/8 bg-[#161616] p-6">
+        <div className="rounded-2xl border border-overlay/8 bg-surface p-6">
           <div className="flex items-center justify-between gap-3">
-            <span className="rounded-md bg-emerald-400/10 px-2 py-1 text-[10px] text-emerald-300">
+            <span className="rounded-md bg-success/10 px-2 py-1 text-[10px] text-success">
               Langkah 4
             </span>
             {analysisDone ? (
-              <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                <span className="size-1.5 rounded-full bg-emerald-400/80" />
+              <span className="flex items-center gap-1.5 text-[11px] text-fg-muted">
+                <span className="size-1.5 rounded-full bg-success/80" />
                 Selesai
               </span>
             ) : (
-              <span className="text-[11px] text-zinc-500">Belum dimulai</span>
+              <span className="text-[11px] text-fg-faint">Belum dimulai</span>
             )}
           </div>
-          <h2 className="mt-4 text-[15px] font-medium text-white">
+          <h2 className="mt-4 text-[15px] font-medium text-fg">
             Hasil Analisis
           </h2>
-          <p className="mt-2 text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
             Tera nyocokin minat, bakat, kepribadian, dan nilai rapormu jadi
             rekomendasi jurusan yang masuk akal.
           </p>
@@ -169,36 +169,36 @@ export default async function DashboardPage() {
               href="/analisis"
               className={
                 analysisDone
-                  ? "mt-5 flex h-10 w-full items-center justify-center rounded-full border border-white/10 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
-                  : "mt-5 flex h-10 w-full items-center justify-center rounded-full bg-white text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+                  ? "mt-5 flex h-10 w-full items-center justify-center rounded-full border border-overlay/10 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
+                  : "mt-5 flex h-10 w-full items-center justify-center rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
               }
             >
               {analysisDone ? "Lihat hasil analisis" : "Jalankan analisis"}
             </Link>
           ) : (
-            <span className="mt-5 flex h-10 w-full cursor-not-allowed items-center justify-center rounded-full border border-white/10 text-[13px] text-zinc-500">
+            <span className="mt-5 flex h-10 w-full cursor-not-allowed items-center justify-center rounded-full border border-overlay/10 text-[13px] text-fg-faint">
               Selesaikan input nilai dulu
             </span>
           )}
         </div>
 
-        <div className="rounded-2xl border border-white/8 bg-[#161616] p-6">
+        <div className="rounded-2xl border border-overlay/8 bg-surface p-6">
           <div className="flex items-center gap-2">
             <TeraMark className="size-5" />
-            <span className="text-[13px] font-medium text-zinc-200">Tera</span>
-            <span className="ml-auto text-[11px] text-zinc-500">
+            <span className="text-[13px] font-medium text-fg-soft">Tera</span>
+            <span className="ml-auto text-[11px] text-fg-faint">
               Sebentar lagi
             </span>
           </div>
-          <p className="mt-4 text-[13px] leading-relaxed text-zinc-400">
+          <p className="mt-4 text-[13px] leading-relaxed text-fg-muted">
             Chat personal sama Tera nyala setelah analisis kamu selesai.
             Selesaikan langkah sebelumnya dulu, ya.
           </p>
-          <div className="mt-4 flex h-11 items-center gap-2 rounded-full border border-white/10 bg-[#1b1b1b] pl-4 pr-1.5 opacity-50">
-            <span className="flex-1 truncate text-[13px] text-zinc-600">
+          <div className="mt-4 flex h-11 items-center gap-2 rounded-full border border-overlay/10 bg-surface-elevated pl-4 pr-1.5 opacity-50">
+            <span className="flex-1 truncate text-[13px] text-fg-faintest">
               Pesan Tera
             </span>
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/25 text-black">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-overlay/25 text-primary-fg">
               <SendIcon className="size-4" />
             </span>
           </div>

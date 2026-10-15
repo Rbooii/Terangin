@@ -17,24 +17,29 @@
 
 ## 2. Design tokens
 
-### Warna
-| Token | Nilai | Pemakaian |
-|-------|-------|-----------|
-| Background | `#050505` | Body & shell |
-| Card | `#161616` | Kartu konten, panel |
-| Card elevated | `#1b1b1b` / `#1e1e1e` | Kartu aktif (stepper), chip user, input chat |
-| Border subtle | `border-white/6` | Garis pemisah, kartu |
-| Border default | `border-white/8` | Kartu konten |
-| Border strong | `border-white/10` / `white/12` | Input, tombol outline, chip |
-| Border hover | `border-white/25` / `white/30` | Hover state |
-| Teks primer | `text-white` / `text-zinc-200` | Judul, isi penting |
-| Teks sekunder | `text-zinc-300` / `text-zinc-400` | Body, deskripsi |
-| Teks tersier | `text-zinc-500` / `text-zinc-600` | Label, hint, placeholder |
-| Sukses | `emerald-400/80` (dot), `emerald-300` (teks), `emerald-400/10` (bg badge) | Status Done |
-| Peringatan | `amber-300` | Timer ≤5 dtk, notice |
-| Error | `red-400` (teks), `red-400/20` (border) | Pesan error |
-| Aksen identitas | `from-violet-500 to-fuchsia-500` | Tile TeraMark di kartu chat sidebar |
-| Aksen kekuatan | `violet-400` | Ikon sparkle di daftar kekuatan |
+### Warna (token semantik, 2 tema)
+Semua komponen memakai **token** yang nilainya berubah per tema (dark default di `:root`, light di class `.light`). Jangan tulis warna literal lagi; pakai utility token di bawah.
+| Token utility | Dark | Light | Pemakaian |
+|---------------|------|-------|-----------|
+| `bg-bg` | `#050505` | `#f7f7f8` | Body & shell |
+| `bg-surface` | `#161616` | `#ffffff` | Kartu konten, panel, field |
+| `bg-surface-elevated` | `#1b1b1b` | `#ffffff` | Kartu aktif (stepper), chip user, input chat |
+| `bg-sunken` | `#111111` | `#f4f4f5` | Sub-panel tersembunyi (kotak alignment, pre code, mock) |
+| `bg-primary` + `text-primary-fg` | putih + hitam | hitam + putih | Tombol primary, bubble user, chip aktif, avatar |
+| `bg-primary-hover` | `zinc-200` | `zinc-800` | Hover tombol primary |
+| `bg-overlay/N` / `border-overlay/N` | putih N% | hitam N% | Semua fill/border translusen (pengganti `white/6`, dst.) |
+| `text-fg` | putih | `#09090b` | Teks primer |
+| `text-fg-soft` / `-secondary` / `-muted` / `-faint` / `-faintest` | zinc-200/300/400/500/600 | zinc-800/700/600/500/400 | Hierarki teks lewat opasitas |
+| `text-success` / `bg-success/N` | emerald-400 | emerald-600 | Status Done |
+| `text-warning` / `border-warning/N` | amber-300 | amber-700 | Timer ≤5 dtk, notice |
+| `text-danger` / `border-danger/N` / `bg-danger/N` | red-400 | red-600 | Error & aksi destruktif |
+| | | | |
+| Aksen identitas (tetap) | `from-violet-500 to-fuchsia-500` | sama | Tile TeraMark di kartu chat sidebar |
+| Aksen kekuatan (tetap) | `violet-400` | sama | Ikon sparkle di daftar kekuatan |
+| Glow knob StepList | `shadow-[0_0_10px_var(--theme-knob-glow)]` | | Titik progress |
+| Sweep StepList | `rgb(var(--theme-sweep) / a)` (sintaks slash, bukan `rgba(var(...), a)` yang invalid) | | Comet outline kartu aktif |
+
+**Tema:** default dark, ikut `prefers-color-scheme` kalau user belum memilih; pilihan disimpan di localStorage (`terangin-theme`) dan diterapkan lewat class `.light` di `<html>` (script anti-FOUC di root layout). Switch tema ada di halaman `/akun`.
 
 ### Tipografi (Inter via `next/font`, variable `--font-inter`)
 | Peran | Class | Contoh pemakaian |
@@ -127,7 +132,7 @@ cursor-not-allowed rounded-full border border-white/8 px-3.5 py-1.5 text-[12px] 
 **Factor bar (analisis deterministik):** bar sub-skor faktor di `FactorBreakdown`. Container panel: `grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border border-white/6 bg-white/[0.02] px-3.5 py-3 sm:grid-cols-5`. Tiap faktor: label `text-[10px] text-zinc-500` + angka `text-[11px] tabular-nums text-zinc-300`, track `mt-1 h-0.5 overflow-hidden rounded-full bg-white/8`, isi `h-full rounded-full bg-white/50` dengan `width: %` (nilai 0-100, di-clamp).
 
 ### 3.6 Ikon (hanya dari `components/landing/icons.tsx`)
-`ArrowRight`, `ArrowDown`, `ArrowUp`, `ChevronDown`, `SendIcon`, `SparkleIcon`, `TrashIcon`, `CheckIcon`, `CopyIcon` — semua stroke SVG 1.3–1.5, `currentColor`. **Jangan tambah ikon dekoratif/emoji.** Kalau butuh ikon baru, buat SVG stroke minimalis dengan pola yang sama.
+`ArrowRight`, `ArrowDown`, `ArrowUp`, `DownloadIcon`, `ChevronDown`, `SendIcon`, `SparkleIcon`, `TrashIcon`, `CheckIcon`, `CopyIcon` — semua stroke SVG 1.3–1.5, `currentColor`. **Jangan tambah ikon dekoratif/emoji.** Kalau butuh ikon baru, buat SVG stroke minimalis dengan pola yang sama.
 
 ---
 
@@ -146,14 +151,14 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 
 ### 5.1 Sidebar (desktop, `md:` ke atas)
 - `w-72 shrink-0 border-r border-white/6 p-5`, fixed tinggi viewport dengan scroll internal.
-- Urutan dari atas: logo `Terang.in` (TeraMark size-4 + wordmark, link `/dashboard`) → **StepList** (menu 4 langkah, `mt-8`) → blok bawah (`mt-auto space-y-3 pt-10`): **ChatMenuCard** → **chip user** (avatar inisial `size-9 rounded-full bg-white text-black` + nama + "Siswa SMA") → tombol **Keluar** (outline, full width).
+- Urutan dari atas: logo `Terang.in` (TeraMark size-4 + wordmark, link `/dashboard`) → **StepList** (menu 4 langkah, `mt-8`) → blok bawah (`mt-auto space-y-3 pt-10`): **ChatMenuCard** → **chip user** (Link ke `/akun`, `aria-label="Buka pengaturan akun"`, avatar inisial `size-9 rounded-full bg-primary text-primary-fg` + nama + "Siswa SMA" + ArrowRight `size-3.5 text-fg-faint`, hover `border-overlay/20`) → tombol **Keluar** (outline, full width).
 - **StepList (menu navigasi):** tiap item = Link (jika state done/active) dengan nomor kotak `size-9 rounded-lg` — aktif: `bg-white text-black` + kartu elevated `bg-[#1e1e1e] shadow-[0_0_0_1px_rgba(255,255,255,0.12)]` (ring via shadow, bukan border, agar tinggi row tetap 60px dan posisi garis tetap presisi); non-aktif: `bg-[#161616] text-zinc-400` (opak, bukan `bg-white/6`, agar garis progress tidak tembus di belakang angka) + hover `bg-white/4`; terkunci: `opacity-60 cursor-not-allowed` tanpa link. Sub-label status: Done (dot hijau) / Not yet Completed. Highlight mengikuti rute (`usePathname`, `aria-current="page"`), fallback step journey aktif.
 - **Sweep outline step aktif (desktop + mobile):** overlay `absolute inset-0 overflow-hidden rounded-[inherit]` berisi `motion.span` persegi `aspect-square w-[220%]` di tengah dengan `conic-gradient` putih (arc comet: transparan lalu `white/85` memuncak di 75% arc, memudar di 90% arc) yang berotasi `360deg` linear 4.5s (desktop, arc 66deg) / 5.5s (mobile, arc 22deg, puncak `white/70`), ditutup `inset-px rounded-[11px] bg-[#1e1e1e]` (mobile `inset-[2px] rounded-[7px] bg-[#050505]`) sehingga tampak cahaya 1–2px mengelilingi kartu/chip. Fade masuk 0.35s; `pointer-events-none` + `aria-hidden`. Arc sempit di mobile agar tetap terbaca sebagai comet, bukan blok.
 - **Progress line vertikal (dinamis):** track `absolute left-8 top-[30px] bottom-[30px] w-px` (persis center ikon step 1–4) + base `bg-white/8`; fill `motion.span` `w-px bg-gradient-to-b from-white/12 via-white/35 to-white/70` dengan `height` dianimasikan ke posisi step aktif (0.55s ease `[0.21,0.47,0.32,0.98]`). Knob titik `size-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.55)]` dirender di depan baris (layer `z-10`, `pointer-events-none`) di tepi atas kartu step aktif (posisi px dihitung dari tinggi track terukur via `ResizeObserver`), ikut beranimasi 0.55s; disembunyikan saat semua step done. Semua step selesai → fill 100%. Entrance: fill dari 0%, knob fade + scale 0.5.
 - **ChatMenuCard:** `flex items-center gap-3 rounded-xl border p-3.5` + tile `size-9 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500` berisi TeraMark `size-5` + judul "Chat sama Tera" + subteks ("Kenapa aku cocok di Psikologi?" / "Lagi ngobrol" saat aktif / "Terbuka setelah analisis selesai" saat terkunci redup).
 
 ### 5.2 Mobile (di bawah `md`)
-- Header: baris atas (logo + tombol Keluar kecil) + **StepList versi kompak** (baris horizontal): nomor `size-6 rounded-md`, dot hijau untuk done, item clickable sama aturannya. Chip aktif dibungkus wrapper `relative grid place-items-center rounded-[9px] p-[2px]` dengan sweep outline yang sama (versi redup). Connector `h-px min-w-2 flex-1 bg-white/8 overflow-hidden` dengan fill `motion.span` gradient `from-white/10 to-white/45` yang terisi (width 0→100%, 0.45s ease sama) untuk segmen sebelum step aktif.
+- Header: baris atas (logo + link "Akun" + tombol Keluar kecil) + **StepList versi kompak** (baris horizontal): nomor `size-6 rounded-md`, dot hijau untuk done, item clickable sama aturannya. Chip aktif dibungkus wrapper `relative grid place-items-center rounded-[9px] p-[2px]` dengan sweep outline yang sama (versi redup). Connector `h-px min-w-2 flex-1 bg-white/8 overflow-hidden` dengan fill `motion.span` gradient `from-white/10 to-white/45` yang terisi (width 0→100%, 0.45s ease sama) untuk segmen sebelum step aktif.
 - **ChatFab:** tombol bulat `fixed bottom-5 right-5 z-40 md:hidden`, `size-14 rounded-full border border-white/12 bg-[#161616]/90 backdrop-blur` + TeraMark `size-9`, shadow `0_16px_40px_-12px rgba(0,0,0,0.9)`, masuk dengan spring (`initial {opacity:0, y:16, scale:0.9}`). Tampil hanya jika analisis selesai dan bukan di `/chat`.
 
 ---
@@ -190,17 +195,18 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 - **Intro:** kartu dengan TeraMark size-12 + "Nggak ada jawaban benar atau salah" + 4 bullet + tombol "Mulai asesmen".
 - **Kuis:** baris atas (chip kategori `bg-white/6` + counter "X/24 terjawab, Y terkunci") → progress bar → **grid 24 chip** (`grid-cols-8 sm:grid-cols-12 gap-1.5`; terjawab = putih, aktif = ring putih, belum dibuka = dashed disabled, terkunci = redup disabled) → kartu soal: "Soal N dari 24" + timer badge besar kanan (atau "Sudah dijawab") + teks soal + 5 tombol Likert (`sm:grid-cols-5 sm:min-h-16`, terpilih putih) + slot status/notice + nav bawah "Kembali" / "Lanjut"/"Selesai".
 - **Finish:** TeraMark + judul status + tombol "Kerjakan sisa soal" atau "Cek lagi jawaban" + "Simpan & proses".
-- **Completed view:** "Asesmen selesai" + jumlah jawaban + tanggal + "Ulangi asesmen" + "Kembali ke dashboard".
+- **Completed view:** "Asesmen selesai" + jumlah jawaban + tanggal + tombol "Ulangi asesmen" (outline) + "Kembali ke dashboard" (primary). Export PDF tidak di sini, tapi satu tombol di `/analisis` (lihat §6.7).
 
 ### 6.6 Input Nilai `/nilai`
 - Header + banner hijau (jika sudah selesai) + **chip semester** (Semester 1..n, aktif putih, "+ Semester" dashed, cap 5).
-- Kartu semester: judul "Semester N" + counter kanan `text-[11px]` ("X dari 7 mapel" dengan `text-amber-300/80` saat kurang, jadi "X mapel tersimpan" `text-zinc-500` saat cukup) → baris mapel (label/input mapel + input nilai + tombol trash; sub-line status) → **baris saran** "Saran dari Semester 1" (mapel redup dashed + input nilai dashed + tombol "Lewati") → "Tambah cepat" chips → tombol dashed "Tambah mata pelajaran".
+- Kartu semester: judul "Semester N" + counter kanan `text-[11px]` ("X dari 7 mapel" dengan `text-amber-300/80` saat kurang, jadi "X mapel tersimpan" `text-zinc-500` saat cukup) → baris mapel (label/input mapel + input nilai + tombol trash; sub-line status) → **baris saran** "Saran dari Semester 1" (mapel redup dashed + input nilai dashed + tombol "Lewati") → "Tambah cepat" chips → tombol dashed "Tambah mata pelajaran". **Aturan baris kosong:** maksimal satu baris kosong (draft belum persisted) per semester — chip "Tambah cepat" mengisi draft yang ada, dan tombol "Tambah mata pelajaran" saat draft sudah ada tidak menambah baris baru (tidak menumpuk).
 - Footer: counter total + hint amber (`max-w-sm text-[12px] leading-relaxed text-amber-300/80`) "Tiap semester minimal 7 mata pelajaran. Semester n kurang m mapel." + tombol "Selesai" (primary; disabled dengan `disabled:opacity-40` sampai semua semester wajib, yaitu default kelas + semester yang sudah ada isinya, punya ≥7 mapel) / "Kembali ke dashboard".
 
 ### 6.7 Hasil Analisis `/analisis`
 - **Intro:** kartu "Analisis siap dijalankan" + TeraMark + chip data (jawaban asesmen, mapel/semester, minat) + tombol "Mulai analisis". Copy intro menyebut komposisi: "Skor kecocokan dihitung dari 5 faktor berbobot: minat, bakat, nilai rapor, kepribadian, dan gaya belajar."
 - **Running:** TeraMark pulsing + "Tera lagi menganalisis" + 4 tahap progress beranimasi.
 - **Hasil:** baris tanggal "Dianalisis {tanggal}" + "Analisis ulang" (outline) → kartu kepribadian (TeraMark size-12 + label + tipe besar + alignment note dalam kotak `bg-black/20`) → kartu "Ringkasan potensimu" (paragraf) → kartu "Kekuatanmu" (list sparkle violet + grid 4 stat kategori dengan bar + chip mapel terkuat) → kartu "Rekomendasi jurusan" (5 sub-kartu: rank badge, nama, match% + bar, alasan, daftar kampus dengan daya tampung/UKT) + disclaimer → footer note.
+- **Tombol unduh laporan:** saat hasil analisis ada, di bawah subteks header tampil satu tombol "Unduh laporan lengkap (PDF)" (primary + DownloadIcon, buka `/cetak/laporan` di tab baru) — satu-satunya tombol export di app; berisi asesmen + nilai + analisis (lihat §6.10).
 - **Dasar penilaian:** chip bobot faktor (`rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-zinc-400`; Minat 30%, Bakat 25%, Nilai rapor 20%, Kepribadian 15%, Gaya belajar 10%; dibaca dari `saved.weights` dengan fallback `FACTOR_WEIGHTS`) + panel `FactorBreakdown` (spec bar di §3.5) di tiap kartu rekomendasi, hanya menampilkan faktor yang punya skor. Tampil hanya kalau data `factors` tersedia (hasil baru); hasil lama tanpa `factors` tidak menampilkan panel ini.
 
 ### 6.8 Chat `/chat`
@@ -220,6 +226,26 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 ### 6.9 Profil `/profil`
 - Form kartu: Nama lengkap, Email (disabled), Asal sekolah, Kelas, Minat awal (chip maks 5) + tombol "Simpan" + indikator "Tersimpan".
 - Kartu "Tur onboarding" + tombol "Ulangi tur" (outline).
+
+### 6.10 Akun `/akun`
+- Guard: auth + onboarding selesai; diakses lewat chip user sidebar atau link "Akun" di header mobile.
+- Header: "Akun" + subteks "Pengaturan tampilan dan keamanan akunmu. Kamu masuk sebagai {email}."
+- **Kartu "Tampilan"** (`rounded-2xl border-overlay/8 bg-surface p-6 sm:p-7`): deskripsi singkat + `ThemeSwitch` — segmented pill `flex w-fit items-center gap-1 rounded-full border border-overlay/10 bg-overlay/4 p-1` berisi tombol "Gelap" / "Terang" (`h-8 rounded-full px-4 text-[12px]`); opsi aktif memakai pill `bg-primary text-primary-fg` yang bergeser via `layoutId` (spring `stiffness 320 damping 30`; reduced motion → tanpa animasi). Perubahan langsung diterapkan + tersimpan di localStorage.
+- **Kartu "Hapus akun"** (`rounded-2xl border-danger/20 bg-danger/5 p-6 sm:p-7`): judul + daftar eksplisit data yang terhapus permanen (profil, jawaban asesmen, nilai, analisis, chat); tombol "Hapus akun" (outline `border-danger/30`, TrashIcon) → reveal form (fade/slide 0.22s): input **password** + input **ketik HAPUS**; tombol "Hapus akun permanen" (solid `bg-danger text-white`) aktif hanya saat password terisi dan konfirmasi persis `HAPUS`; error inline `text-danger` (password salah / konfirmasi salah). Sukses → seluruh data terhapus (cascade) + signOut → landing.
+- Subscription: **belum ada** (ditunda).
+
+### 6.11 Dokumen cetak `/cetak/laporan` (laporan lengkap)
+- Halaman standalone **tanpa AppShell**, tema **light profesional** (latar putih, teks zinc-900, aksen abu saja) untuk print/fotokopi dan lampiran sekolah; konten `max-w-[820px] mx-auto` di layar, `print:max-w-none print:px-0 print:py-0`.
+- Guard: auth + onboarding + asesmen + nilai + analisis sudah ada (belum → redirect ke langkah kurang / `/analisis`); `metadata.robots` noindex; `metadata.title` "Laporan Lengkap: Terang.in".
+- **Kop:** wordmark `Terang.in` (`.in` zinc-400) + label mikro "Dokumen pribadi" → judul `text-2xl font-semibold tracking-tight` "Laporan Lengkap: Asesmen, Nilai, dan Hasil Analisis" → deskripsi singkat; garis bawah `border-b-2 border-zinc-900`.
+- **Data peserta:** grid 2 kolom — Nama, Sekolah, Kelas, Tanggal asesmen (`Intl.DateTimeFormat("id-ID", { dateStyle: "long" })`).
+- **Bagian A. Hasil Asesmen:** kalimat jumlah terjawab (+ soal terlewat karena batas waktu); kartu `rounded-lg border-zinc-200 bg-zinc-50 p-4` "Tiga kekuatan teratas" (badge nomor `size-5 bg-zinc-900 text-white`, nama dimensi + kategori, skor `/100`); 4 kategori (Minat/RIASEC, Bakat, Kepribadian, Gaya belajar) dengan baris `grid-cols-[150px_1fr_52px]` — label, bar `h-1.5 bg-zinc-200` + fill `bg-zinc-800`, angka kanan.
+- **Bagian B. Nilai Rapor:** kalimat jumlah mapel + semester; tabel `border-zinc-200` rounded — kolom Mata pelajaran, Rata-rata (`tabular-nums`), Semester (jumlah semester datanya), diurutkan dari rata-rata tertinggi; catatan mikro "rata-rata dihitung dari nilai yang kamu masukkan tiap semester".
+- **Bagian C. Hasil Analisis:** baris "Dianalisis pada {tanggal}"; grid 2 kolom kartu "Tipe kepribadian" (`text-lg font-semibold`) + "Catatan keselarasan"; "Ringkasan potensimu" (paragraf); "Kekuatanmu" (list disc); "Rekomendasi jurusan" — sub-kartu per jurusan (rank badge, nama, `{match}% cocok`, bar match, alasan, daftar kampus dengan daya tampung + UKT format `Rp xjt per semester` yang sama dengan app) + disclaimer perkiraan; setiap sub-kartu `break-inside-avoid`.
+- **Footer dokumen:** disclaimer skala 0-100 bukan nilai kelulusan, disclaimer "panduan awal, keputusan tetap milikmu", dan "Dibuat dengan Terang.in pada {tanggal}" (`text-zinc-400`).
+- **Toolbar layar (client, `print:hidden`):** fixed kanan bawah — tombol "Kembali" (outline, ke `/analisis`) + "Cetak / Simpan PDF" (pill zinc-900 + DownloadIcon) memanggil `window.print()`; tidak auto-print saat load.
+- **Print CSS** (globals.css): `@page { size: A4; margin: 16mm }`, body dipaksa putih, `:root { color-scheme: light }`; class `.print-exact` (`print-color-adjust: exact`) dipasang di root dokumen agar bar/background tercetak.
+- Copy dokumen fixed, profesional, **tanpa emoji/em dash/panah teks**; skala dimensi 0-100, match pakai persen.
 
 ---
 
@@ -244,6 +270,7 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 | Streaming caret chat | `.chat-streaming > :last-child::after` 2px, blink 1.1s ease-in-out; statis saat reduced motion |
 | Aksi salin pesan | reveal hover/focus (`md:opacity-0` lalu `group-hover/focus-within:opacity-100`), feedback "Tersalin" 1.6 dtk |
 | Reset chat | morph idle↔konfirmasi AnimatePresence 0.18s; pesan exit y -4 0.22s; empty state spring masuk |
+| Switch tema /akun | pill aktif bergeser via `layoutId`, spring `stiffness 320 damping 30`; reduced motion → langsung; ganti tema pakai transisi warna body 200ms |
 | Autosave indicator | "Menyimpan..." → "Tersimpan" → hilang 2,2 dtk |
 | Notice (waktu habis) | amber, hilang setelah 3 dtk |
 | Reduced motion | `useReducedMotion` → tanpa fade/slide/blink; sweep StepList tampil statis tanpa rotasi, fill/knob langsung pindah tanpa transisi |

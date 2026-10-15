@@ -22,7 +22,7 @@ function sweepBackground(peak: number, arc: number) {
   const tail = start + arc * 0.9;
   const softAlpha = (peak * 0.22).toFixed(2);
   const tailAlpha = (peak * 0.4).toFixed(2);
-  return `conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, 0) ${start}deg, rgba(255, 255, 255, ${softAlpha}) ${soft}deg, rgba(255, 255, 255, ${peak}) ${crest}deg, rgba(255, 255, 255, ${tailAlpha}) ${tail}deg, rgba(255, 255, 255, 0) 360deg)`;
+  return `conic-gradient(from 0deg, rgb(var(--theme-sweep) / 0) 0deg, rgb(var(--theme-sweep) / 0) ${start}deg, rgb(var(--theme-sweep) / ${softAlpha}) ${soft}deg, rgb(var(--theme-sweep) / ${peak}) ${crest}deg, rgb(var(--theme-sweep) / ${tailAlpha}) ${tail}deg, rgb(var(--theme-sweep) / 0) 360deg)`;
 }
 
 function SweepOutline({
@@ -67,25 +67,25 @@ function StepContent({ step, active }: { step: JourneyStep; active: boolean }) {
       <span
         className={
           active
-            ? "relative grid size-9 shrink-0 place-items-center rounded-lg bg-white text-[13px] font-medium text-black"
-            : "relative grid size-9 shrink-0 place-items-center rounded-lg bg-[#161616] text-[13px] text-zinc-400"
+            ? "relative grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-[13px] font-medium text-primary-fg"
+            : "relative grid size-9 shrink-0 place-items-center rounded-lg bg-surface text-[13px] text-fg-muted"
         }
       >
         {step.n}
       </span>
       <span className="relative min-w-0">
-        <span className="block truncate text-[13px] text-zinc-200">
+        <span className="block truncate text-[13px] text-fg-soft">
           {step.title}
         </span>
         <span
           className={
             step.state === "done"
-              ? "flex items-center gap-1.5 text-[11px] text-zinc-400"
-              : "block text-[11px] text-zinc-500"
+              ? "flex items-center gap-1.5 text-[11px] text-fg-muted"
+              : "block text-[11px] text-fg-faint"
           }
         >
           {step.state === "done" && (
-            <span className="size-1.5 rounded-full bg-emerald-400/80" />
+            <span className="size-1.5 rounded-full bg-success/80" />
           )}
           {step.status}
         </span>
@@ -151,9 +151,9 @@ export default function StepList({
           aria-hidden="true"
           className="absolute bottom-[30px] left-8 top-[30px] w-px"
         >
-          <span className="absolute inset-0 bg-white/8" />
+          <span className="absolute inset-0 bg-overlay/8" />
           <motion.span
-            className="absolute left-0 top-0 w-px bg-gradient-to-b from-white/12 via-white/35 to-white/70"
+            className="absolute left-0 top-0 w-px bg-gradient-to-b from-overlay/12 via-overlay/35 to-overlay/70"
             initial={reduceMotion ? false : { height: "0%" }}
             animate={{ height: `${progressPct}%` }}
             transition={{ duration: reduceMotion ? 0 : 0.55, ease: EASE }}
@@ -167,9 +167,9 @@ export default function StepList({
           const isActive = step.n === activeNumber;
 
           const rowClass = isActive
-            ? "relative flex items-center gap-4 rounded-xl bg-[#1e1e1e] px-3.5 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.12)]"
+            ? "relative flex items-center gap-4 rounded-xl bg-surface-elevated px-3.5 py-3 shadow-[0_0_0_1px_rgb(var(--theme-overlay-rgb)/0.12)]"
             : unlocked
-              ? "relative flex items-center gap-4 rounded-xl px-3.5 py-3 transition-colors hover:bg-white/4"
+              ? "relative flex items-center gap-4 rounded-xl px-3.5 py-3 transition-colors hover:bg-overlay/4"
               : "relative flex cursor-not-allowed items-center gap-4 px-3.5 py-3 opacity-60";
 
           const sweep = isActive ? (
@@ -178,7 +178,7 @@ export default function StepList({
               peak={0.85}
               arc={66}
               duration={4.5}
-              coverClassName="inset-px rounded-[11px] bg-[#1e1e1e]"
+              coverClassName="inset-px rounded-[11px] bg-surface-elevated"
             />
           ) : null;
 
@@ -210,7 +210,7 @@ export default function StepList({
         {knobTop !== null && (
           <motion.span
             aria-hidden="true"
-            className="pointer-events-none absolute left-8 z-10 size-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.55)]"
+            className="pointer-events-none absolute left-8 z-10 size-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--theme-knob-glow)]"
             style={{ x: "-50%", y: "-50%" }}
             initial={reduceMotion ? false : { opacity: 0, scale: 0.5 }}
             animate={{ top: knobTop, opacity: 1, scale: 1 }}
@@ -234,7 +234,7 @@ export default function StepList({
           const activeWrap =
             "relative grid place-items-center rounded-[9px] p-[2px]";
           const inactiveChip =
-            "grid size-6 shrink-0 place-items-center rounded-md bg-[#161616] text-[11px] text-zinc-400";
+            "grid size-6 shrink-0 place-items-center rounded-md bg-surface text-[11px] text-fg-muted";
 
           const chip = isActive ? (
             <>
@@ -243,9 +243,9 @@ export default function StepList({
                 peak={0.7}
                 arc={22}
                 duration={5.5}
-                coverClassName="inset-[2px] rounded-[7px] bg-[#050505]"
+                coverClassName="inset-[2px] rounded-[7px] bg-bg"
               />
-              <span className="relative grid size-6 place-items-center rounded-md bg-white text-[11px] font-medium text-black">
+              <span className="relative grid size-6 place-items-center rounded-md bg-primary text-[11px] font-medium text-primary-fg">
                 {step.n}
               </span>
             </>
@@ -280,15 +280,15 @@ export default function StepList({
                 </span>
               )}
               {step.state === "done" && (
-                <span className="size-1.5 shrink-0 rounded-full bg-emerald-400/80" />
+                <span className="size-1.5 shrink-0 rounded-full bg-success/80" />
               )}
               {i < steps.length - 1 && (
                 <span
                   aria-hidden="true"
-                  className="relative h-px min-w-2 flex-1 overflow-hidden bg-white/8"
+                  className="relative h-px min-w-2 flex-1 overflow-hidden bg-overlay/8"
                 >
                   <motion.span
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-white/12 to-white/55"
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-overlay/12 to-overlay/55"
                     initial={reduceMotion ? false : { width: "0%" }}
                     animate={{ width: i < progressIndex ? "100%" : "0%" }}
                     transition={{ duration: reduceMotion ? 0 : 0.45, ease: EASE }}

@@ -50,10 +50,10 @@ export default async function GradesPage() {
 
   return (
     <AppShell user={{ name: profile.fullName }} steps={steps}>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">
+      <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Input Nilai
       </h1>
-      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
+      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
         Masukin nilai rapor tiap semester. Minimal 7 mata pelajaran per
         semester biar analisisnya akurat. Kamu tetap bisa ngubah kapan aja.
       </p>

@@ -12,11 +12,11 @@ export default function Wordmark() {
         >
           <defs>
             <linearGradient id="wordmark-fill" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#ffffff" />
-              <stop offset="0.42" stopColor="#f2f2f2" />
-              <stop offset="0.68" stopColor="#9a9a9a" />
-              <stop offset="0.88" stopColor="#3d3d3d" />
-              <stop offset="1" stopColor="#1f1f1f" />
+              <stop offset="0" stopColor="var(--theme-wordmark-from)" />
+              <stop offset="0.42" stopColor="var(--theme-wordmark-from)" />
+              <stop offset="0.68" stopColor="var(--theme-wordmark-mid)" />
+              <stop offset="0.88" stopColor="var(--theme-wordmark-to)" />
+              <stop offset="1" stopColor="var(--theme-wordmark-to)" />
             </linearGradient>
           </defs>
           <text

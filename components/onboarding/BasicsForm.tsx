@@ -43,7 +43,7 @@ export default function BasicsForm() {
       <div className="space-y-2">
         <label
           htmlFor="schoolOrigin"
-          className="block text-[12px] font-medium text-zinc-400"
+          className="block text-[12px] font-medium text-fg-muted"
         >
           Asal sekolah
         </label>
@@ -55,14 +55,14 @@ export default function BasicsForm() {
           required
           minLength={2}
           maxLength={150}
-          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-white/25 focus:bg-white/[0.06]"
+          className="h-11 w-full rounded-xl border border-overlay/10 bg-overlay/[0.04] px-4 text-sm text-fg outline-none transition-colors placeholder:text-fg-faintest focus:border-overlay/25 focus:bg-overlay/[0.06]"
         />
       </div>
 
       <div className="space-y-2">
         <label
           htmlFor="gradeLevel"
-          className="block text-[12px] font-medium text-zinc-400"
+          className="block text-[12px] font-medium text-fg-muted"
         >
           Kelas
         </label>
@@ -71,7 +71,7 @@ export default function BasicsForm() {
           name="gradeLevel"
           required
           defaultValue=""
-          className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-colors focus:border-white/25 focus:bg-white/[0.06] [&>option]:bg-[#161616]"
+          className="h-11 w-full appearance-none rounded-xl border border-overlay/10 bg-overlay/[0.04] px-4 text-sm text-fg outline-none transition-colors focus:border-overlay/25 focus:bg-overlay/[0.06] [&>option]:bg-surface"
         >
           <option value="" disabled>
             Pilih kelas kamu
@@ -84,10 +84,10 @@ export default function BasicsForm() {
 
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
-          <span className="text-[12px] font-medium text-zinc-400">
+          <span className="text-[12px] font-medium text-fg-muted">
             Minat awal
           </span>
-          <span className="text-[11px] text-zinc-600">
+          <span className="text-[11px] text-fg-faintest">
             {selected.length}/{MAX_INTERESTS} dipilih
           </span>
         </div>
@@ -100,10 +100,10 @@ export default function BasicsForm() {
                 key={interest}
                 className={
                   isSelected
-                    ? "cursor-pointer rounded-full border border-white/70 bg-white px-3.5 py-1.5 text-[12px] font-medium text-black transition-colors"
+                    ? "cursor-pointer rounded-full border border-overlay/70 bg-primary px-3.5 py-1.5 text-[12px] font-medium text-primary-fg transition-colors"
                     : isDisabled
-                      ? "cursor-not-allowed rounded-full border border-white/8 px-3.5 py-1.5 text-[12px] text-zinc-600"
-                      : "cursor-pointer rounded-full border border-white/12 px-3.5 py-1.5 text-[12px] text-zinc-300 transition-colors hover:border-white/30 hover:text-white"
+                      ? "cursor-not-allowed rounded-full border border-overlay/8 px-3.5 py-1.5 text-[12px] text-fg-faintest"
+                      : "cursor-pointer rounded-full border border-overlay/12 px-3.5 py-1.5 text-[12px] text-fg-secondary transition-colors hover:border-overlay/30 hover:text-fg"
                 }
               >
                 <input
@@ -122,12 +122,12 @@ export default function BasicsForm() {
         </div>
       </div>
 
-      {state?.error && <p className="text-[12px] text-red-400">{state.error}</p>}
+      {state?.error && <p className="text-[12px] text-danger">{state.error}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="h-11 w-full rounded-full bg-white text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-11 w-full rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Menyimpan..." : "Lanjut"}
       </button>

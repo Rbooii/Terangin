@@ -27,26 +27,26 @@ export default async function SignupPage() {
           <TeraMark className="size-12" />
           <Link
             href="/"
-            className="text-sm font-semibold tracking-tight text-white"
+            className="text-sm font-semibold tracking-tight text-fg"
           >
-            Terang<span className="text-zinc-500">.in</span>
+            Terang<span className="text-fg-faint">.in</span>
           </Link>
         </div>
 
-        <h1 className="mt-8 text-center text-2xl font-semibold tracking-tight text-white">
+        <h1 className="mt-8 text-center text-2xl font-semibold tracking-tight text-fg">
           Bikin akun baru
         </h1>
-        <p className="mt-2 text-center text-[13px] leading-relaxed text-zinc-400">
+        <p className="mt-2 text-center text-[13px] leading-relaxed text-fg-muted">
           Kenalan dulu sama Tera, cuma butuh setengah menit.
         </p>
 
         <SignupForm />
 
-        <p className="mt-6 text-center text-[13px] text-zinc-500">
+        <p className="mt-6 text-center text-[13px] text-fg-faint">
           Udah punya akun?{" "}
           <Link
             href="/login"
-            className="text-white underline-offset-4 hover:underline"
+            className="text-fg underline-offset-4 hover:underline"
           >
             Masuk
           </Link>
@@ -55,7 +55,7 @@ export default async function SignupPage() {
         <p className="mt-12 text-center">
           <Link
             href="/"
-            className="text-[12px] text-zinc-600 transition-colors hover:text-zinc-400"
+            className="text-[12px] text-fg-faintest transition-colors hover:text-fg-muted"
           >
             Kembali ke beranda
           </Link>

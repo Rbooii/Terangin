@@ -33,10 +33,10 @@ export default async function ProfilePage() {
 
   return (
     <AppShell user={{ name: profile.fullName }} steps={steps}>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">
+      <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Profil
       </h1>
-      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
+      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
         Data dasar yang kamu isi waktu kenalan. Berubah pikiran? Ubah aja,
         Tera bakal ikut menyesuaikan.
       </p>
@@ -53,16 +53,16 @@ export default async function ProfilePage() {
         />
       </div>
 
-      <div className="mt-5 rounded-2xl border border-white/8 bg-[#161616] p-6">
-        <h2 className="text-[15px] font-medium text-white">Tur onboarding</h2>
-        <p className="mt-2 text-[13px] leading-relaxed text-zinc-400">
+      <div className="mt-5 rounded-2xl border border-overlay/8 bg-surface p-6">
+        <h2 className="text-[15px] font-medium text-fg">Tur onboarding</h2>
+        <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
           Mau lihat lagi cara kerja Terang.in? Ulang turnya dari awal, nggak
           ada datamu yang hilang.
         </p>
         <form action={restartTourAction}>
           <button
             type="submit"
-            className="mt-5 h-10 rounded-full border border-white/10 px-5 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+            className="mt-5 h-10 rounded-full border border-overlay/10 px-5 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
           >
             Ulangi tur
           </button>

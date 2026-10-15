@@ -63,6 +63,7 @@ export function TeraMark({ className = "" }: { className?: string }) {
       ref={ref}
       viewBox="0 0 240 240"
       className={className}
+      data-teramark=""
       aria-hidden="true"
       fill="none"
     >

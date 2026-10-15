@@ -243,12 +243,12 @@ export default function AssessmentFlow({
 
   if (phase === "intro") {
     return (
-      <div className="rounded-2xl border border-white/8 bg-[#161616] px-7 py-10 sm:px-10 sm:py-12">
+      <div className="rounded-2xl border border-overlay/8 bg-surface px-7 py-10 sm:px-10 sm:py-12">
         <TeraMark className="size-12" />
-        <h2 className="mt-6 text-xl font-medium tracking-tight text-white sm:text-2xl">
+        <h2 className="mt-6 text-xl font-medium tracking-tight text-fg sm:text-2xl">
           Nggak ada jawaban benar atau salah
         </h2>
-        <ul className="mt-4 space-y-2.5 text-sm leading-relaxed text-zinc-400">
+        <ul className="mt-4 space-y-2.5 text-sm leading-relaxed text-fg-muted">
           <li>
             24 soal ringan, masing-masing punya waktu 15 detik. Jawab spontan
             sesuai dirimu, bukan yang kelihatan keren.
@@ -269,7 +269,7 @@ export default function AssessmentFlow({
         <button
           type="button"
           onClick={() => setPhase("quiz")}
-          className="mt-7 h-11 w-full rounded-full bg-white text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 sm:w-56"
+          className="mt-7 h-11 w-full rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover sm:w-56"
         >
           Mulai asesmen
         </button>
@@ -279,16 +279,16 @@ export default function AssessmentFlow({
 
   if (phase === "finish") {
     return (
-      <div className="rounded-2xl border border-white/8 bg-[#161616] px-7 py-10 sm:px-10 sm:py-12">
+      <div className="rounded-2xl border border-overlay/8 bg-surface px-7 py-10 sm:px-10 sm:py-12">
         <TeraMark className="size-12" />
-        <h2 className="mt-6 text-xl font-medium tracking-tight text-white sm:text-2xl">
+        <h2 className="mt-6 text-xl font-medium tracking-tight text-fg sm:text-2xl">
           {remainingCount === 0
             ? "Semua soal udah tertangani"
             : "Hampir selesai"}
         </h2>
         {remainingCount > 0 ? (
           <>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-fg-muted">
               Masih ada {remainingCount} soal yang belum dijawab
               {lockedCount > 0
                 ? `, plus ${lockedCount} soal terkunci karena waktu habis`
@@ -302,14 +302,14 @@ export default function AssessmentFlow({
                 setPhase("quiz");
                 goTo(target === -1 ? 0 : target);
               }}
-              className="mt-7 h-11 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200"
+              className="mt-7 h-11 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
             >
               Kerjakan sisa soal
             </button>
           </>
         ) : (
           <>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-fg-muted">
               Jawabanmu tersimpan.
               {lockedCount > 0
                 ? ` ${lockedCount} soal terkunci karena waktu habis, dan itu nggak masalah.`
@@ -318,7 +318,7 @@ export default function AssessmentFlow({
               berikutnya.
             </p>
             {finishError && (
-              <p className="mt-4 text-[12px] text-red-400">{finishError}</p>
+              <p className="mt-4 text-[12px] text-danger">{finishError}</p>
             )}
             <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
               <button
@@ -327,7 +327,7 @@ export default function AssessmentFlow({
                   setPhase("quiz");
                   goTo(lastOpenIndex());
                 }}
-                className="h-11 rounded-full border border-white/10 px-5 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+                className="h-11 rounded-full border border-overlay/10 px-5 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
               >
                 Cek lagi jawaban
               </button>
@@ -335,7 +335,7 @@ export default function AssessmentFlow({
                 type="button"
                 onClick={handleFinish}
                 disabled={finishing}
-                className="h-11 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {finishing ? "Menyimpan..." : "Simpan & proses"}
               </button>
@@ -352,18 +352,18 @@ export default function AssessmentFlow({
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <span className="rounded-md bg-white/6 px-2 py-1 text-[10px] text-zinc-300">
+        <span className="rounded-md bg-overlay/6 px-2 py-1 text-[10px] text-fg-secondary">
           {question && CATEGORY_LABELS[question.category]}
         </span>
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-fg-faint">
           {answeredCount}/{total} terjawab
           {lockedCount > 0 ? `, ${lockedCount} terkunci` : ""}
         </span>
       </div>
 
-      <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/8">
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-overlay/8">
         <div
-          className="h-full rounded-full bg-white transition-all duration-300"
+          className="h-full rounded-full bg-primary transition-all duration-300"
           style={{ width: `${(answeredCount / total) * 100}%` }}
         />
       </div>
@@ -393,14 +393,14 @@ export default function AssessmentFlow({
               className={[
                 "grid h-8 place-items-center rounded-lg text-[11px] transition-colors",
                 isLocked
-                  ? "cursor-not-allowed bg-white/4 text-zinc-700"
+                  ? "cursor-not-allowed bg-overlay/4 text-fg-faintest"
                   : isUnopened
-                    ? "cursor-not-allowed border border-dashed border-white/10 text-zinc-600"
+                    ? "cursor-not-allowed border border-dashed border-overlay/10 text-fg-faintest"
                     : isAnswered
-                      ? "bg-white font-medium text-black hover:bg-zinc-200"
-                      : "bg-white/6 text-zinc-400 hover:bg-white/12 hover:text-white",
+                      ? "bg-primary font-medium text-primary-fg hover:bg-primary-hover"
+                      : "bg-overlay/6 text-fg-muted hover:bg-overlay/12 hover:text-fg",
                 isCurrent && !isLocked
-                  ? "ring-2 ring-white/70 ring-offset-2 ring-offset-[#050505]"
+                  ? "ring-2 ring-primary/70 ring-offset-2 ring-offset-bg"
                   : "",
               ].join(" ")}
             >
@@ -410,7 +410,7 @@ export default function AssessmentFlow({
         })}
       </div>
 
-      <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/8 bg-[#161616] px-7 py-10 sm:px-10 sm:py-12">
+      <div className="relative mt-5 overflow-hidden rounded-2xl border border-overlay/8 bg-surface px-7 py-10 sm:px-10 sm:py-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={question?.id}
@@ -420,19 +420,19 @@ export default function AssessmentFlow({
             transition={{ duration: 0.3, ease: [0.21, 0.47, 0.32, 0.98] }}
           >
             <div className="flex items-start justify-between gap-3">
-              <p className="pt-1 text-[11px] text-zinc-500">
+              <p className="pt-1 text-[11px] text-fg-faint">
                 Soal {index + 1} dari {total}
               </p>
               {currentAnswered ? (
-                <span className="pt-1 text-[11px] text-zinc-600">
+                <span className="pt-1 text-[11px] text-fg-faintest">
                   Sudah dijawab
                 </span>
               ) : (
                 <span
                   className={
                     currentTimeLeft <= 5
-                      ? "flex items-baseline gap-1 rounded-xl border border-amber-300/30 px-3 py-1.5 text-amber-300"
-                      : "flex items-baseline gap-1 rounded-xl border border-white/10 px-3 py-1.5 text-white"
+                      ? "flex items-baseline gap-1 rounded-xl border border-warning/30 px-3 py-1.5 text-warning"
+                      : "flex items-baseline gap-1 rounded-xl border border-overlay/10 px-3 py-1.5 text-fg"
                   }
                 >
                   <span className="text-2xl font-semibold leading-none tabular-nums">
@@ -442,7 +442,7 @@ export default function AssessmentFlow({
                 </span>
               )}
             </div>
-            <h2 className="mt-3 text-lg font-medium leading-relaxed tracking-tight text-white sm:text-xl">
+            <h2 className="mt-3 text-lg font-medium leading-relaxed tracking-tight text-fg sm:text-xl">
               {question?.questionText}
             </h2>
 
@@ -457,8 +457,8 @@ export default function AssessmentFlow({
                     onClick={() => void handleSelect(option.value)}
                     className={
                       isSelected
-                        ? "rounded-xl border border-white bg-white px-3 py-3 text-[12px] font-medium text-black transition-colors sm:min-h-16"
-                        : "rounded-xl border border-white/12 px-3 py-3 text-[12px] text-zinc-300 transition-colors hover:border-white/30 hover:text-white disabled:opacity-60 sm:min-h-16"
+                        ? "rounded-xl border border-primary bg-primary px-3 py-3 text-[12px] font-medium text-primary-fg transition-colors sm:min-h-16"
+                        : "rounded-xl border border-overlay/12 px-3 py-3 text-[12px] text-fg-secondary transition-colors hover:border-overlay/30 hover:text-fg disabled:opacity-60 sm:min-h-16"
                     }
                   >
                     {option.label}
@@ -471,8 +471,8 @@ export default function AssessmentFlow({
               <span
                 className={
                   notice
-                    ? "text-[11px] text-amber-300/80"
-                    : "text-[11px] text-zinc-600"
+                    ? "text-[11px] text-warning/80"
+                    : "text-[11px] text-fg-faintest"
                 }
               >
                 {notice ??
@@ -483,7 +483,7 @@ export default function AssessmentFlow({
                       : "")}
               </span>
               {saveError && (
-                <span className="text-[11px] text-red-400">{saveError}</span>
+                <span className="text-[11px] text-danger">{saveError}</span>
               )}
             </div>
           </motion.div>
@@ -495,7 +495,7 @@ export default function AssessmentFlow({
           type="button"
           onClick={() => goTo(prevIndex)}
           disabled={prevIndex === -1}
-          className="h-10 rounded-full border border-white/10 px-5 text-[13px] text-zinc-300 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-10 rounded-full border border-overlay/10 px-5 text-[13px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
         >
           Kembali
         </button>
@@ -504,7 +504,7 @@ export default function AssessmentFlow({
             type="button"
             onClick={() => setPhase("finish")}
             disabled={!allHandled}
-            className="h-10 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-10 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             Selesai
           </button>
@@ -513,7 +513,7 @@ export default function AssessmentFlow({
             type="button"
             onClick={() => goNext(index)}
             disabled={!currentAnswered}
-            className="h-10 rounded-full bg-white px-5 text-[13px] font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-10 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             Lanjut
           </button>

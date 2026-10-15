@@ -44,7 +44,7 @@ function TypingDots() {
         {[0, 1, 2].map((index) => (
           <motion.span
             key={index}
-            className="size-1.5 rounded-full bg-zinc-500"
+            className="size-1.5 rounded-full bg-fg-faint"
             animate={{ opacity: [0.3, 1, 0.3] }}
             transition={{ duration: 1.2, repeat: Infinity, delay: index * 0.18 }}
           />
@@ -57,7 +57,7 @@ function TypingDots() {
 function CopyRow() {
   return (
     <div className="mt-0.5 flex pl-10">
-      <span className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] text-zinc-500">
+      <span className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] text-fg-faint">
         <CopyIcon className="size-3.5" />
         Salin
       </span>
@@ -139,17 +139,17 @@ export default function ChatDemo({ active }: { active: boolean }) {
 
   return (
     <div className="flex min-h-[460px] flex-1 flex-col">
-      <div className="flex items-center gap-3 border-b border-white/6 pb-4">
+      <div className="flex items-center gap-3 border-b border-overlay/6 pb-4">
         <TeraMark className="size-8 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-medium text-white">Tera</p>
-          <p className="truncate text-[11px] text-zinc-500">
+          <p className="text-[15px] font-medium text-fg">Tera</p>
+          <p className="truncate text-[11px] text-fg-faint">
             Konselor jurusanmu, jawab pakai data profilmu
           </p>
         </div>
         <span
           aria-hidden="true"
-          className="grid size-8 shrink-0 place-items-center rounded-full text-zinc-500"
+          className="grid size-8 shrink-0 place-items-center rounded-full text-fg-faint"
         >
           <TrashIcon className="size-4" />
         </span>
@@ -167,7 +167,7 @@ export default function ChatDemo({ active }: { active: boolean }) {
             <div className="flex items-start gap-3">
               <TeraMark className="mt-0.5 size-7 shrink-0" />
               <div
-                className={`min-w-0 flex-1 text-[13px] leading-relaxed text-zinc-300 ${
+                className={`min-w-0 flex-1 text-[13px] leading-relaxed text-fg-secondary ${
                   stage === "stream1" ? "chat-streaming" : ""
                 }`}
               >
@@ -187,7 +187,7 @@ export default function ChatDemo({ active }: { active: boolean }) {
             transition={{ duration: 0.22 }}
             className="flex justify-end"
           >
-            <div className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-[13px] leading-relaxed text-black">
+            <div className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-[13px] leading-relaxed text-primary-fg">
               {USER_TEXT}
             </div>
           </motion.div>
@@ -204,7 +204,7 @@ export default function ChatDemo({ active }: { active: boolean }) {
             <div className="flex items-start gap-3">
               <TeraMark className="mt-0.5 size-7 shrink-0" />
               <div
-                className={`min-w-0 flex-1 text-[13px] leading-relaxed text-zinc-300 ${
+                className={`min-w-0 flex-1 text-[13px] leading-relaxed text-fg-secondary ${
                   stage === "stream2" ? "chat-streaming" : ""
                 }`}
               >
@@ -218,18 +218,18 @@ export default function ChatDemo({ active }: { active: boolean }) {
         )}
       </div>
 
-      <div className="mt-5 flex items-end gap-2 rounded-2xl border border-white/10 bg-[#161616] p-2 pl-4">
-        <span className="min-h-9 flex-1 py-2 text-[13px] text-zinc-600">
+      <div className="mt-5 flex items-end gap-2 rounded-2xl border border-overlay/10 bg-surface p-2 pl-4">
+        <span className="min-h-9 flex-1 py-2 text-[13px] text-fg-faintest">
           Pesan Tera
         </span>
         <span
           aria-hidden="true"
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-black"
+          className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-fg"
         >
           <ArrowUp className="size-4" />
         </span>
       </div>
-      <p className="mt-2 text-center text-[10px] text-zinc-600">
+      <p className="mt-2 text-center text-[10px] text-fg-faintest">
         Tera bisa keliru. Cek info resmi kampus sebelum memutuskan ya.
       </p>
     </div>

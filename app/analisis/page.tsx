@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { asc, eq } from "drizzle-orm";
@@ -11,6 +12,7 @@ import AnalysisPanel, {
   type FactorView,
   type SavedAnalysisView,
 } from "@/components/analysis/AnalysisPanel";
+import { DownloadIcon } from "@/components/landing/icons";
 import { prepareAnalysisData } from "@/lib/analysis/prepare";
 import { getJourneySteps, getUserProfile } from "@/lib/onboarding";
 
@@ -121,13 +123,26 @@ export default async function AnalysisPage() {
 
   return (
     <AppShell user={{ name: profile.fullName }} steps={steps}>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">
+      <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Hasil Analisis
       </h1>
-      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
+      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
         Terang.in membaca ulang minat, bakat, kepribadian, gaya belajar, dan
         nilai rapormu, lalu merangkumnya jadi rekomendasi jurusan.
       </p>
+      {saved && (
+        <div className="mt-5">
+          <Link
+            href="/cetak/laporan"
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-10 w-fit items-center gap-2 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
+          >
+            <DownloadIcon className="size-4" />
+            Unduh laporan lengkap (PDF)
+          </Link>
+        </div>
+      )}
 
       <div className="mt-8">
         <AnalysisPanel
