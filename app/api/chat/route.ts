@@ -18,7 +18,7 @@ import { getChatAccess } from "@/lib/payment/queries";
 
 export const maxDuration = 60;
 
-const HISTORY_LIMIT = 60;
+const HISTORY_LIMIT = 16;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
   let systemPrompt: string;
   try {
-    const userContext = await getUserChatContext(userId);
+    const userContext = await getUserChatContext(userId, userText);
     systemPrompt = buildChatSystemPrompt(userContext);
   } catch (error) {
     console.error("[chat] gagal menyiapkan konteks:", error);

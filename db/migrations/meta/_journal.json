@@ -22,6 +22,13 @@
       "when": 1792112135446,
       "tag": "0002_mixed_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792114556515,
+      "tag": "0003_wet_tinkerer",
+      "breakpoints": true
     }
   ]
 }

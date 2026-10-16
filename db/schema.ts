@@ -115,20 +115,29 @@ export const universities = pgTable("universities", {
   location: varchar("location", { length: 100 }),
 });
 
-export const universityMajors = pgTable("university_majors", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  universityId: uuid("university_id")
-    .notNull()
-    .references(() => universities.id, { onDelete: "cascade" }),
-  majorId: uuid("major_id")
-    .notNull()
-    .references(() => majors.id, { onDelete: "cascade" }),
-  capacity: integer("capacity"),
-  estimatedTuition: decimal("estimated_tuition", {
-    precision: 15,
-    scale: 2,
-  }),
-});
+export const universityMajors = pgTable(
+  "university_majors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    universityId: uuid("university_id")
+      .notNull()
+      .references(() => universities.id, { onDelete: "cascade" }),
+    majorId: uuid("major_id")
+      .notNull()
+      .references(() => majors.id, { onDelete: "cascade" }),
+    capacity: integer("capacity"),
+    estimatedTuition: decimal("estimated_tuition", {
+      precision: 15,
+      scale: 2,
+    }),
+  },
+  (table) => [
+    unique("university_majors_university_major_unique").on(
+      table.universityId,
+      table.majorId,
+    ),
+  ],
+);
 
 export const analysisResults = pgTable("analysis_results", {
   id: uuid("id").primaryKey().defaultRandom(),

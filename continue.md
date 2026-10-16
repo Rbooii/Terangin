@@ -32,7 +32,7 @@ Aplikasi terdiri dari:
 
 **Kualitas saat ini:** `npm run lint` bersih, `npm run build` bersih, audit AI-slop bersih (app/components/lib/db). Semua fitur diverifikasi dengan unit check + E2E Playwright + pemeriksaan DB. Hasil verifikasi terakhir: unit check rumus skoring 7/7 PASS, E2E analisis 10/10 PASS (reproducible: dua kali run identik 87/84/83/82/81).
 
-**Kondisi database (mesin Windows saat ini):** schema ter-push dan seed sudah dimigrasi ke format skoring: 24 soal (24/24 punya `dimension`), 12 jurusan (12/12 punya `profile`), 10 kampus, 34 relasi. Tabel `users` hanya berisi akun milik user (`michaelkevin3112@gmail.com`, `bloxfruit737@gmail.com`) — akun test E2E selalu dihapus setelah sesi; lihat §6 untuk resep membuat user uji. `psql` tidak tersedia di PATH (pakai skrip node).
+**Kondisi database (mesin Windows saat ini):** schema ter-push dan seed sudah dimigrasi ke format skoring: 24 soal (24/24 punya `dimension`), 12 jurusan (12/12 punya `profile`), 200 kampus (100 PTN termasuk 24 UIN, 70 PTS, 30 PTLN), 131 relasi terkurasi. Tabel `users` hanya berisi akun milik user (`michaelkevin3112@gmail.com`, `bloxfruit737@gmail.com`) — akun test E2E selalu dihapus setelah sesi; lihat §6 untuk resep membuat user uji. `psql` tidak tersedia di PATH (pakai skrip node).
 
 **State git:** commit terakhir `c16fc03` ("feat: redirect login, validasi nilai minimum, dan pembatasan scope chat") mencakup guard redirect halaman publik, validasi 7 mapel, dan pembatasan scope chat. Perubahan **analisis deterministik (§3.13) masih uncommitted** di working tree saat dokumen ini ditulis (detail di §3.14).
 
@@ -91,14 +91,14 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 > Catatan: deskripsi di bawah adalah versi awal. Sejak §3.13, skor & urutan dihitung kode (deterministik) dan LLM hanya menarasikan — prompt "13 prinsip" sudah digantikan prompt narasi.
 - **Stack:** Vercel AI SDK v7 (`ai@7`) + `@ai-sdk/groq` + model **`openai/gpt-oss-120b`**.
 - **Temuan penting:** Groq Structured Outputs (mode strict, constrained decoding) **tidak mendukung streaming** → generate blocking dengan UI progress bertahap beranimasi. Hasil generate hanya ~4 detik.
-- Data kampus: **seed SQL kurasi** (`db/seed-colleges.ts`) — 12 jurusan, 10 kampus PTN/PTS, 34 relasi dengan daya tampung + estimasi UKT (ditandai "perkiraan" di UI). Tavily tidak dipakai (keputusan user).
+- Data kampus: **seed SQL kurasi** (`db/seed-colleges.ts`) — 12 jurusan, 200 kampus (100 PTN termasuk 24 UIN, 70 PTS, 30 PTLN) dan 131 relasi terkurasi dengan daya tampung + estimasi UKT (ditandai "perkiraan" di UI; PTLN tanpa daya tampung, biaya estimasi IDR). Tavily tidak dipakai (keputusan user).
 - Prompt engineering: system prompt "Tera konselor" 13 prinsip (semua klaim merujuk data, validasi silang minat awal vs asesmen, match% realistis bervariasi, tanpa emoji/em dash, alasan menyebut data spesifik) + user prompt berisi agregat lengkap. `majorId` pakai `z.enum` dari ID di DB (anti-halusinasi) + post-validasi (dedupe, clamp 40–97, rank 1..n) + persist transaksional.
 - `/analisis`: intro + ringkasan data → progress 4 tahap → hasil (tipe kepribadian + catatan keselarasan, ringkasan narasi, kekuatan + bar 4 kategori + mapel terkuat, 5 rekomendasi dengan match% + kampus/UKT, disclaimer). "Analisis ulang" mengganti hasil.
 - `reasoningEffort: "medium"`.
 
 ### 3.8 Chat Tera (Fase 4)
 - `/chat`: `useChat` (`@ai-sdk/react`) + `DefaultChatTransport` → `POST /api/chat` → `streamText` + `toUIMessageStream` + `onFinish` persist. Satu sesi per user (tabel PRD `chat_sessions`/`chat_messages`). Riwayat 50 pesan terakhir di-load server-side.
-- Konteks personal dibangun segar per request (`lib/chat/context.ts`): profil, ringkasan asesmen, nilai, hasil analisis, + katalog kampus lengkap dari DB.
+- Konteks personal dibangun segar per request (`lib/chat/context.ts`): profil, ringkasan asesmen, nilai, hasil analisis, + katalog kampus lengkap dari DB + **direktori 200 kampus** (nama, kota, tipe; tanpa angka).
 - **Grounding fix:** percobaan pertama model bilang "data UKT tidak tersedia" padahal ada di katalog → diperbaiki dengan instruksi eksplisit "wajib cek katalog dulu" + `reasoningEffort` naik ke medium. Sekarang jawaban menyebut angka dari DB dengan benar.
 - UI ala Grok: user = bubble putih, AI = avatar + teks tanpa bubble, markdown ringan (react-markdown + remark-gfm), typing dots, auto-scroll pinned, input sticky dengan tombol panah-atas (berubah jadi stop saat streaming), kartu saran pertanyaan **personal** (dari rekomendasi rank 1).
 - **Akses: setelah analisis selesai** (keputusan user — urutan ketat PRD).
@@ -155,6 +155,13 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 - **Gotcha baru:** countdown QR dirender `--:--` sampai `setInterval` pertama (callback interval aman dari lint; jangan hitung di initial render → bisa hydration mismatch); pseudo-QR wajib deterministik dari payload (seeded FNV + xorshift, tanpa `Math.random`); print CSS struk memakai `body:has(.receipt-print)` supaya tidak merusak cetak `/cetak/laporan`; `AppShell` sekarang butuh `user.id` (8 halaman app mengirim `id: session.user.id`).
 - **Gotcha timezone (penting):** kolom timestamp memakai `timestamp without time zone`; drizzle/postgres.js membaca nilai naive sebagai **UTC**, sedangkan SQL `now()` menulis wall-time zona lokal (WIB) — selisih 7 jam. Fix: `db/index.ts` sekarang memaksa `connection: { TimeZone: "UTC" }` sehingga `now()` (termasuk `defaultNow()`) menulis UTC wall dan konsisten dengan drizzle (bonus: `created_at` yang sebelumnya tersimpan/terbaca +7 jam kini benar). **Skrip tes yang mengubah timestamp via SQL wajib memakai klien dengan `connection: { TimeZone: "UTC" }` juga**, kalau tidak backdate/`now()` akan meleset 7 jam (sempat bikin false alarm alur expired QRIS). Klien raw tanpa opsi itu juga membaca timestamp sebagai waktu lokal — jangan campur metrik raw vs drizzle untuk membandingkan waktu.
 - **Verifikasi:** lint/build/slop bersih; migrasi `db:migrate` run kedua no-op; E2E Playwright **37/37 PASS** (gate intro, QR + countdown, resume PENDING setelah reload, expired via backdate → "Buat kode baru", bayar → verifying → paid → analisis auto-run + kredit terpakai, chat terbuka, riwayat + badge + struk di `/akun`, analisis ulang minta bayar lagi + Batal kembali, window 5 hari habis → locked view + subteks sidebar + `/api/chat` 403, struk print-safe light/dark).
+
+### 3.16 Data kampus 200 (PTN/PTS/PTLN) + injeksi kampus di chat (sesi lanjutan)
+- **Permintaan user:** seeding universitas jadi 200 (PTN, PTS, PTLN) dengan riset web.
+- **Keputusan:** 100 PTN (76 PTN SNBP 2025 + 24 UIN) / 70 PTS (QS AUR, Webometrics, EduRank, klasterisasi 2025, + regional) / 30 PTLN (QS 2026: Singapura, Malaysia, Jepang, Australia, Inggris, AS, Belanda, Jerman, Korea, Hong Kong); 131 relasi terkurasi 10-12/jurusan (PTLN `capacity` null + estimasi biaya IDR); Tera mengenal semua 200 kampus lewat injeksi on-demand (bukan embed penuh, lihat §4.9).
+- **Implementasi:** `db/seed-colleges.ts` dirombak (array `PTN_/UIN_/PTS_/PTLN_UNIVERSITIES` + `buildRelations`); jalur non-`--force` jadi sinkron non-destruktif (update profil, insert kampus baru by name, refresh relasi); migrasi `0003_wet_tinkerer.sql` menambah unique `(university_id, major_id)`; `lib/chat/context.ts` dapat parameter `focusText` + `findMentionedUniversities` (match nama penuh/pendek, cap 3 kampus) dan `CATALOG_CAMPUSES_PER_MAJOR = 4`; `HISTORY_LIMIT` chat 60 → 16; prompt chat ditambah 1 baris soal bagian KAMPUS YANG DISEBUT USER.
+- **Temuan penting:** request chat sempat gagal `rate_limit_exceeded` — **Groq free tier `openai/gpt-oss-120b` = 8.000 TPM**, dan embed direktori 200 baris membuat input tembus ~9,9k token. Pelajaran: ukur ukuran konteks per perubahan (§4.9), dan pakai injeksi on-demand untuk data besar yang jarang dipakai utuh.
+- **Verifikasi:** seed lokal 190 kampus baru (total 200: PTN 100/PTS 70/PTLN 30, relasi 131, tanpa duplikat), run kedua idempotent; `--force` diuji di DB scratch `terangin_seedtest` (drop setelahnya); E2E Playwright **8/8 PASS** (analisis menampilkan kampus PTN/PTLN/PTS baru; chat benar untuk kampus direktorat "Universitas Hasanuddin" & "Universitas Klabat" via injeksi dan angka katalog TI@UI 70); lint/build/slop bersih.
 
 ---
 
@@ -218,7 +225,7 @@ Model AI (analisis & chat) juga diinstruksikan tanpa emoji & em dash di system p
 - Normalisasi: faktor tanpa data di-renormalisasi (bukan dianggap 0); minimal 2 faktor agar total dihitung; soal skip (score 0) tidak ikut `dimensionScores`.
 - Menambah soal asesmen baru: WAJIB isi `dimension` (nama unik, lihat daftar di `db/seed.ts`) supaya ikut skoring; soal tanpa dimensi hanya masuk rata-rata kategori.
 - Menambah jurusan baru: isi `profile` (riasec/aptitude/personality/learning/subjects) di `db/seed-colleges.ts`; jurusan tanpa profil tidak akan pernah masuk rekomendasi.
-- Katalog konteks chat HARUS tetap satu kampus per baris (`lib/chat/context.ts`); pernah terjadi model mencampur angka dua jurusan satu kampus (TI@UI 70 vs SI@UI 55) saat baris dirapatkan.
+- Katalog konteks chat HARUS tetap satu kampus per baris (`lib/chat/context.ts`); pernah terjadi model mencampur angka dua jurusan satu kampus (TI@UI 70 vs SI@UI 55) saat baris dirapatkan. **Batasan TPM Groq free tier = 8.000 token/menit**: konteks chat harus ramping supaya beberapa pesan per menit tetap jalan (template lama ~3.5k token/pesan). Karena itu: katalog chat dibatasi 4 kampus unggulan per jurusan (`CATALOG_CAMPUSES_PER_MAJOR`), direktori 200 kampus TIDAK di-embed, melainkan **injeksi on-demand** (`findMentionedUniversities`: nama kampus yang disebut user, incl. nama pendeknya, di-inject beserta kota/tipe/jurusan terkait), dan `HISTORY_LIMIT` diturunkan 60 → 16. Kalau limit Groq dinaikkan (Dev Tier), `CATALOG_CAMPUSES_PER_MAJOR` bisa dinaikkan lagi; jangan embed 200 baris tanpa mengecek TPM.
 
 ---
 
@@ -241,7 +248,7 @@ npm run db:migrate         # terapkan migrasi (tsx scripts/migrate.ts)
 npm run db:baseline        # tandai migrasi existing applied tanpa dijalankan (sekali, untuk DB lama)
 npm run db:push            # sync schema langsung, hanya prototyping lokal
 npm run db:seed            # 24 soal asesmen (idempotent, --force untuk ulang)
-npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent, --force)
+npm run db:seed-colleges   # 12 jurusan + 200 kampus + 131 relasi (sinkron non-destruktif; --force reset penuh)
 ```
 
 **Pipeline DB production (Vercel):** `package.json` punya script `vercel-build` = `tsx scripts/migrate.ts && next build`. Vercel otomatis memakainya, sehingga setiap deploy menjalankan migrasi dulu sebelum kode baru melayani traffic. `scripts/migrate.ts` hanya jalan saat `VERCEL_ENV=production` (preview di-skip; override `FORCE_MIGRATE=1`). Prod DB yang sudah terisi schema cukup di-baseline sekali: `DATABASE_URL=<prod> npm run db:baseline`. Jangan pernah mengedit file migrasi yang sudah teraplikasi (hash sha256 file dipakai sebagai penanda di `drizzle.__drizzle_migrations`).
@@ -276,7 +283,7 @@ npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent, --f
 
 Password akun yang kita buat: `password123`.
 
-**Data seed:** 24 soal (6×4 kategori, semua ber-`dimension`), 12 jurusan (semua ber-`profile`), 10 kampus (8 PTN + 2 PTS), 34 relasi kampus-jurusan dengan daya tampung + estimasi UKT.
+**Data seed:** 24 soal (6×4 kategori, semua ber-`dimension`), 12 jurusan (semua ber-`profile`), 200 kampus (100 PTN termasuk 24 UIN, 70 PTS, 30 PTLN), 131 relasi kampus-jurusan terkurasi dengan daya tampung + estimasi UKT (PTLN tanpa daya tampung).
 
 ---
 

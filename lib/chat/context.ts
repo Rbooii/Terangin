@@ -1,6 +1,12 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { analysisRecommendations, analysisResults, majors } from "@/db/schema";
+import {
+  analysisRecommendations,
+  analysisResults,
+  majors,
+  universities,
+  universityMajors,
+} from "@/db/schema";
 import { prepareAnalysisData } from "@/lib/analysis/prepare";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -17,7 +23,50 @@ function formatTuition(value: string | null) {
   const millions = new Intl.NumberFormat("id-ID", {
     maximumFractionDigits: 1,
   }).format(amount / 1_000_000);
-  return `sekitar Rp ${millions}jt per semester`;
+  return `Rp ${millions}jt/semester`;
+}
+
+const CATALOG_CAMPUSES_PER_MAJOR = 4;
+
+const NAME_PREFIXES = [
+  "universitas ",
+  "national university of ",
+  "university of ",
+  "uin ",
+  "upn ",
+  "isi ",
+  "institut ",
+  "politeknik ",
+];
+
+type DirectoryRow = {
+  id: string;
+  name: string;
+  type: string;
+  location: string | null;
+};
+
+function findMentionedUniversities(
+  rows: DirectoryRow[],
+  text: string,
+): DirectoryRow[] {
+  const haystack = text.toLowerCase();
+  const matches: DirectoryRow[] = [];
+  for (const row of rows) {
+    const full = row.name.toLowerCase();
+    let short = full;
+    for (const prefix of NAME_PREFIXES) {
+      if (short.startsWith(prefix)) {
+        short = short.slice(prefix.length);
+        break;
+      }
+    }
+    const tokens = [full, ...short.split(",").map((part) => part.trim())];
+    if (tokens.some((token) => token.length >= 5 && haystack.includes(token))) {
+      matches.push(row);
+    }
+  }
+  return matches.slice(0, 3);
 }
 
 type FactorBreakdown = {
@@ -30,10 +79,13 @@ type FactorBreakdown = {
   match?: number | null;
 };
 
-export async function getUserChatContext(userId: string): Promise<string> {
+export async function getUserChatContext(
+  userId: string,
+  focusText?: string,
+): Promise<string> {
   const data = await prepareAnalysisData(userId);
 
-  const [resultRows, recommendationRows] = await Promise.all([
+  const [resultRows, recommendationRows, directoryRows] = await Promise.all([
     db
       .select()
       .from(analysisResults)
@@ -51,6 +103,15 @@ export async function getUserChatContext(userId: string): Promise<string> {
       .innerJoin(majors, eq(analysisRecommendations.majorId, majors.id))
       .where(eq(analysisRecommendations.userId, userId))
       .orderBy(asc(analysisRecommendations.rankOrder)),
+    db
+      .select({
+        id: universities.id,
+        name: universities.name,
+        type: universities.type,
+        location: universities.location,
+      })
+      .from(universities)
+      .orderBy(asc(universities.type), asc(universities.name)),
   ]);
 
   const sections: string[] = [];
@@ -140,7 +201,10 @@ export async function getUserChatContext(userId: string): Promise<string> {
 
   const campusLines = data.majors
     .map((major) => {
-      const campuses = data.campusesByMajor.get(major.id) ?? [];
+      const campuses = (data.campusesByMajor.get(major.id) ?? []).slice(
+        0,
+        CATALOG_CAMPUSES_PER_MAJOR,
+      );
       if (campuses.length === 0) return null;
       const campusText = campuses
         .map((campus) => {
@@ -150,7 +214,7 @@ export async function getUserChatContext(userId: string): Promise<string> {
             : campus.universityName;
           const details: string[] = [];
           if (campus.capacity)
-            details.push(`daya tampung sekitar ${campus.capacity}`);
+            details.push(`daya tampung ${campus.capacity}`);
           const tuition = formatTuition(campus.estimatedTuition);
           if (tuition) details.push(`UKT ${tuition}`);
           const detailText = details.length > 0 ? `: ${details.join(", ")}` : "";
@@ -164,10 +228,66 @@ export async function getUserChatContext(userId: string): Promise<string> {
 
   sections.push(
     [
-      "KATALOG KAMPUS DAN JURUSAN (data internal Terang.in, angka UKT dan daya tampung adalah perkiraan):",
+      "KATALOG KAMPUS DAN JURUSAN (data internal Terang.in, angka daya tampung dan UKT adalah perkiraan):",
       campusLines,
     ].join("\n"),
   );
+
+  if (focusText) {
+    const mentioned = findMentionedUniversities(directoryRows, focusText);
+    if (mentioned.length > 0) {
+      const relationRows = await db
+        .select({
+          universityId: universityMajors.universityId,
+          majorName: majors.name,
+          capacity: universityMajors.capacity,
+          estimatedTuition: universityMajors.estimatedTuition,
+        })
+        .from(universityMajors)
+        .innerJoin(majors, eq(universityMajors.majorId, majors.id))
+        .where(
+          inArray(
+            universityMajors.universityId,
+            mentioned.map((row) => row.id),
+          ),
+        );
+
+      const relationsByUniversity = new Map<string, typeof relationRows>();
+      for (const row of relationRows) {
+        const list = relationsByUniversity.get(row.universityId) ?? [];
+        list.push(row);
+        relationsByUniversity.set(row.universityId, list);
+      }
+
+      const focusLines = mentioned
+        .map((university) => {
+          const meta = [university.location, university.type]
+            .filter(Boolean)
+            .join(", ");
+          const relations = relationsByUniversity.get(university.id) ?? [];
+          const relationText = relations
+            .slice(0, 6)
+            .map((relation) => {
+              const details: string[] = [];
+              if (relation.capacity)
+                details.push(`daya tampung ${relation.capacity}`);
+              const tuition = formatTuition(relation.estimatedTuition);
+              if (tuition) details.push(`UKT ${tuition}`);
+              return `${relation.majorName}${details.length > 0 ? ` (${details.join(", ")})` : ""}`;
+            })
+            .join("; ");
+          return `- ${university.name}${meta ? ` (${meta})` : ""}${relationText ? `. Jurusan terkait: ${relationText}.` : "."}`;
+        })
+        .join("\n");
+
+      sections.push(
+        [
+          "KAMPUS YANG DISEBUT USER (dari database Terang.in):",
+          focusLines,
+        ].join("\n"),
+      );
+    }
+  }
 
   return sections.join("\n\n");
 }

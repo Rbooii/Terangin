@@ -163,7 +163,7 @@ export const db = drizzle(client, { schema });   // singleton via globalThis di 
 | `academic_records` | id, user_id FK, subject varchar(50), semester int, score numeric(5,2) | + **unique(user_id, subject, semester)** untuk upsert |
 | `majors` | id, name, description, career_prospects | + `profile jsonb` (bobot skoring per jurusan: riasec/aptitude/personality/learning/subjects) |
 | `universities` | id, name, type enum, location | — |
-| `university_majors` | id, university_id FK, major_id FK, capacity int, estimated_tuition numeric(15,2) | — |
+| `university_majors` | id, university_id FK, major_id FK, capacity int (**null untuk PTLN**), estimated_tuition numeric(15,2) | + **unique `(university_id, major_id)`** (migrasi 0003, seed pakai `onConflictDoNothing`) |
 | `analysis_results` | id, user_id FK **unique** (one-to-one), personality_type varchar(50), analysis_summary text, generated_at | + `details jsonb` (`{ strengths, alignmentNote, weights, method }`) |
 | `analysis_recommendations` | id, user_id FK, major_id FK, match_percentage numeric(5,2), rank_order int | + `reason text`, + `factors jsonb` (rincian sub-skor deterministik per jurusan) |
 | `chat_sessions` | id, user_id FK, started_at | — (satu sesi aktif per user) |
@@ -178,7 +178,7 @@ export const db = drizzle(client, { schema });   // singleton via globalThis di 
 - `scripts/migrate.ts` (`npm run db:migrate`): runner migrasi terprogram (`drizzle-orm/postgres-js/migrator`) yang dimuat juga oleh `vercel-build`. Guard: skip kalau `VERCEL_ENV` ada dan bukan `production` (override `FORCE_MIGRATE=1`). Aman diulang, migrasi teraplikasi di-skip.
 - `scripts/baseline.ts` (`npm run db:baseline`): sekali pakai untuk DB yang sudah terisi schema — tandai migrasi existing sebagai applied tanpa menjalankannya (abort kalau riwayat migrasi sudah ada).
 - `db/seed.ts` (`npm run db:seed`): 24 soal asesmen (6 per kategori, Likert, RIASEC/Flanagan-inspired), idempotent (skip kalau `questions` terisi; `--force` hapus+isi ulang dengan peringatan cascade).
-- `db/seed-colleges.ts` (`npm run db:seed-colleges`): 12 jurusan, 10 kampus (UI/ITB/UGM/IPB/Unpad/ITS/UNAIR/Undip/BINUS/Telkom), 34 relasi `university_majors` (daya tampung + estimasi UKT). Relasi di-link by-name setelah insert (map nama→id). Idempotent + `--force`.
+- `db/seed-colleges.ts` (`npm run db:seed-colleges`): 12 jurusan, **200 kampus** (100 PTN termasuk 24 UIN, 70 PTS, 30 PTLN), **131 relasi** `university_majors` terkurasi (10-12 kampus per jurusan; daya tampung + estimasi UKT, PTLN `capacity` null + estimasi biaya IDR per semester). Relasi di-link by-name setelah insert (map nama→id). Idempotent: jalur non-`--force` bersifat **sync non-destruktif** (update profil jurusan, insert kampus yang belum ada, refresh relasi); `--force` menghapus & isi ulang penuh. Relasi dibatasi sengaja agar katalog konteks chat tetap ringkas (naikkan hati-hati; lihat `continue.md` §4.9).
 - `drizzle.config.ts`: `loadEnvConfig(process.cwd())` dari `@next/env` (agar `.env.local` terbaca drizzle-kit), dialect postgresql, schema `./db/schema.ts`, out `./db/migrations`.
 
 ---
@@ -283,7 +283,7 @@ terangin/
 │   │   ├── score.ts            # scoreMajors + FACTOR_WEIGHTS: skoring deterministik (lihat §9.1)
 │   │   └── schema.ts           # buildAnalysisSchema(top5Ids) → zod Output.object (narasi + reason per jurusan)
 │   ├── chat/
-│   │   ├── context.ts          # getUserChatContext(userId): konteks personal + katalog kampus (satu kampus per baris)
+│   │   ├── context.ts          # getUserChatContext(userId, focusText): konteks personal + katalog 4 kampus unggulan/jurusan (satu baris per kampus) + injeksi KAMPUS YANG DISEBUT USER (findMentionedUniversities, lihat §9.2)
 │   │   ├── prompt.ts           # buildChatSystemPrompt(context): 5 blok (cakupan, curhat, pegangan cerita, data, gaya)
 │   │   ├── messages.ts         # rowToUIMessage(row), extractMessageText(uiMessage)
 │   │   └── text.ts             # sanitizeChatText: karakter tipografis non-ASCII jadi padanan standar
@@ -389,7 +389,7 @@ Alur POST:
 1. `auth()` → 401; **gate akses** `getChatAccess(userId)` (transaksi PAID terakhir < 5 hari; tidak aktif → 403) ; parse `{ messages: UIMessage[] }`; ambil pesan user terakhir → teks (cap 2000 char).
 2. Cari/buat `chat_sessions` (satu per user) → insert pesan USER ke `chat_messages`.
 3. Ambil 60 pesan terakhir (desc lalu di-sort asc) → map `rowToUIMessage` → history.
-4. `getUserChatContext(userId)` (prepare + analysis + rekomendasi + katalog kampus, satu kampus per baris) → `buildChatSystemPrompt` (5 blok: PERAN DAN CAKUPAN dengan daftar out-of-scope + formula penolakan, CARA MENANGGAPI CURHAT termasuk batas krisis, PEGANGAN SAAT USER BERCERITA, SUMBER DATA dengan aturan salin angka persis, GAYA BAHASA tanpa emoji/karakter non-standar).
+4. `getUserChatContext(userId, userText)`: prepare + hasil analisis + rekomendasi + katalog kampus (satu kampus per baris, dibatasi `CATALOG_CAMPUSES_PER_MAJOR` = 4 kampus unggulan per jurusan) + **injeksi on-demand** kampus yang disebut user (`findMentionedUniversities`, match nama penuh atau nama pendek, cap 3 kampus, lengkap kota/tipe/jurusan terkait). Catatan anggaran token: Groq free tier `openai/gpt-oss-120b` hanya 8.000 TPM, jadi konteks chat dijaga ramping (`HISTORY_LIMIT` = 16 pesan) dan direktori 200 kampus tidak di-embed penuh. Hasil → `buildChatSystemPrompt` (5 blok: PERAN DAN CAKUPAN dengan daftar out-of-scope + formula penolakan, CARA MENANGGAPI CURHAT termasuk batas krisis, PEGANGAN SAAT USER BERCERITA, SUMBER DATA dengan aturan salin angka persis + bagian KAMPUS YANG DISEBUT USER, GAYA BAHASA tanpa emoji/karakter non-standar).
 5. `streamText({ model: groq("openai/gpt-oss-120b"), system, messages: await convertToModelMessages(history), temperature: 0.7, providerOptions: { groq: { reasoningEffort: "high" } } })`.
 6. `createUIMessageStreamResponse({ stream: toUIMessageStream({ stream, originalMessages: history, onFinish: persist pesan AI }) })`.
 - `export const maxDuration = 60`.
@@ -439,7 +439,7 @@ Alur POST:
 | `db:push` | Sync schema langsung, hanya untuk prototyping lokal |
 | `db:studio` | Drizzle Studio |
 | `db:seed` | 24 soal asesmen (`tsx db/seed.ts`, idempotent + `--force`) |
-| `db:seed-colleges` | 12 jurusan + 10 kampus + 34 relasi (`tsx db/seed-colleges.ts`) |
+| `db:seed-colleges` | 12 jurusan + 200 kampus + 131 relasi (`tsx db/seed-colleges.ts`, sinkron non-destruktif; `--force` reset penuh) |
 
 ---
 
