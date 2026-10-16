@@ -43,14 +43,12 @@ export function TeraMark({ className = "" }: { className?: string }) {
     <>
       <path
         d="M70 100c9-19 27-19 36-1"
-        stroke="#0a0a0a"
         strokeWidth="12"
         strokeLinecap="round"
         transform="rotate(-10 88 94)"
       />
       <path
         d="M134 99c9-18 27-18 36 1"
-        stroke="#0a0a0a"
         strokeWidth="12"
         strokeLinecap="round"
         transform="rotate(10 152 94)"
@@ -67,7 +65,7 @@ export function TeraMark({ className = "" }: { className?: string }) {
       aria-hidden="true"
       fill="none"
     >
-      <circle cx="120" cy="120" r="120" fill="white" />
+      <circle cx="120" cy="120" r="120" />
       <motion.g style={{ x: springX, y: springY }}>
         {reduceMotion ? (
           eyes

@@ -5,8 +5,10 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { runAnalysisAction } from "@/lib/actions/analysis";
 import { FACTOR_WEIGHTS } from "@/lib/analysis/score";
+import { PRICE_IDR, formatRupiah, type PaymentView } from "@/lib/payment";
 import { TeraMark } from "@/components/landing/TeraMark";
 import { CheckIcon, SparkleIcon } from "@/components/landing/icons";
+import QrisPaymentFlow from "@/components/payment/QrisPaymentFlow";
 
 export type CampusView = {
   universityName: string;
@@ -129,12 +131,18 @@ function FactorBreakdown({ factors }: { factors: FactorView | null }) {
 export default function AnalysisPanel({
   saved,
   stats,
+  hasCredit,
+  pending,
 }: {
   saved: SavedAnalysisView | null;
   stats: AnalysisStats;
+  hasCredit: boolean;
+  pending: PaymentView | null;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"idle" | "running" | "error">("idle");
+  const [mode, setMode] = useState<"idle" | "paying" | "running" | "error">(
+    pending ? "paying" : "idle",
+  );
   const [stage, setStage] = useState(0);
   const [error, setError] = useState<string>();
   const [, startTransition] = useTransition();
@@ -153,6 +161,10 @@ export default function AnalysisPanel({
     setError(undefined);
     const result = await runAnalysisAction();
     if (!result.ok) {
+      if (result.code === "PAYMENT_REQUIRED") {
+        setMode("paying");
+        return;
+      }
       setError(result.error);
       setMode("error");
       return;
@@ -160,6 +172,25 @@ export default function AnalysisPanel({
     startTransition(() => {
       router.refresh();
     });
+  }
+
+  function start() {
+    if (hasCredit) {
+      void run();
+      return;
+    }
+    setError(undefined);
+    setMode("paying");
+  }
+
+  if (mode === "paying") {
+    return (
+      <QrisPaymentFlow
+        initial={pending}
+        onPaid={() => void run()}
+        onClose={() => setMode("idle")}
+      />
+    );
   }
 
   if (mode === "running") {
@@ -247,15 +278,28 @@ export default function AnalysisPanel({
               {interest}
             </span>
           ))}
+          <span className="rounded-full border border-overlay/10 px-3 py-1 text-[11px] text-fg-muted">
+            1 sesi analisis {formatRupiah(PRICE_IDR)}
+          </span>
         </div>
         {error && <p className="mt-5 text-[12px] text-danger">{error}</p>}
         <button
           type="button"
-          onClick={() => void run()}
+          onClick={start}
           className="mt-7 h-11 w-full rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover sm:w-56"
         >
-          {mode === "error" ? "Coba lagi" : "Mulai analisis"}
+          {mode === "error"
+            ? "Coba lagi"
+            : hasCredit
+              ? "Mulai analisis"
+              : `Bayar ${formatRupiah(PRICE_IDR)} & mulai analisis`}
         </button>
+        {!hasCredit && mode !== "error" && (
+          <p className="mt-3 max-w-md text-[11px] leading-relaxed text-fg-faintest">
+            Pembayaran via QRIS (mode demo). Setelah pembayaran terverifikasi,
+            analisis langsung dijalankan.
+          </p>
+        )}
       </div>
     );
   }
@@ -272,12 +316,17 @@ export default function AnalysisPanel({
         </span>
         <button
           type="button"
-          onClick={() => void run()}
+          onClick={start}
           className="h-9 rounded-full border border-overlay/10 px-4 text-[12px] text-fg-secondary transition-colors hover:bg-overlay/5 hover:text-fg"
         >
           Analisis ulang
         </button>
       </div>
+
+      <p className="text-[11px] leading-relaxed text-fg-faintest">
+        Analisis ulang butuh sesi baru {formatRupiah(PRICE_IDR)} via QRIS (mode
+        demo). Satu pembayaran berlaku untuk satu kali proses analisis.
+      </p>
 
       {error && <p className="text-[12px] text-danger">{error}</p>}
 

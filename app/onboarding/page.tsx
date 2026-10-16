@@ -33,7 +33,7 @@ export default async function OnboardingPage() {
   const hasBasics = Boolean(profile.schoolOrigin && profile.gradeLevel);
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell user={{ name: profile.fullName, id: session.user.id }} steps={steps}>
       {hasBasics ? (
         <>
           <h1 className="text-2xl font-semibold tracking-tight text-fg">

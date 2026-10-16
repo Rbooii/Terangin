@@ -147,3 +147,46 @@ export function CheckIcon({ className = "" }: IconProps) {
     </svg>
   );
 }
+
+export function DashboardIcon({ className = "" }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+      <rect
+        x="2.5"
+        y="2.5"
+        width="4.6"
+        height="6.2"
+        rx="1.3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
+      <rect
+        x="8.9"
+        y="2.5"
+        width="4.6"
+        height="3.4"
+        rx="1.3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
+      <rect
+        x="8.9"
+        y="7.5"
+        width="4.6"
+        height="6"
+        rx="1.3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
+      <rect
+        x="2.5"
+        y="10.3"
+        width="4.6"
+        height="3.2"
+        rx="1.3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
+    </svg>
+  );
+}

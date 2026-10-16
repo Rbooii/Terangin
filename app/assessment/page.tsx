@@ -56,7 +56,7 @@ export default async function AssessmentPage() {
   const completedAt = profile.assessmentCompletedAt;
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell user={{ name: profile.fullName, id: session.user.id }} steps={steps}>
       {completedAt ? (
         <>
           <h1 className="text-2xl font-semibold tracking-tight text-fg">

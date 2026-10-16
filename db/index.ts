@@ -7,7 +7,11 @@ const globalForDb = globalThis as unknown as {
 };
 
 const client =
-  globalForDb.postgresClient ?? postgres(process.env.DATABASE_URL!, { max: 10 });
+  globalForDb.postgresClient ??
+  postgres(process.env.DATABASE_URL!, {
+    max: 10,
+    connection: { TimeZone: "UTC" },
+  });
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb.postgresClient = client;

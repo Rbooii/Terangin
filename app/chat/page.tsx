@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { asc, desc, eq } from "drizzle-orm";
@@ -13,8 +14,11 @@ import {
 } from "@/db/schema";
 import AppShell from "@/components/app/AppShell";
 import ChatPanel from "@/components/chat/ChatPanel";
+import { TeraMark } from "@/components/landing/TeraMark";
 import { rowToUIMessage } from "@/lib/chat/messages";
 import { getJourneySteps, getUserProfile } from "@/lib/onboarding";
+import { CHAT_ACCESS_DAYS, formatDateId } from "@/lib/payment";
+import { getChatAccess } from "@/lib/payment/queries";
 
 export const instant = false;
 
@@ -54,8 +58,43 @@ export default async function ChatPage() {
     redirect("/analisis");
   }
 
-  const [steps, topRecommendation, recentRows] = await Promise.all([
+  const [steps, access] = await Promise.all([
     getJourneySteps(session.user.id),
+    getChatAccess(session.user.id),
+  ]);
+
+  if (!access.active) {
+    return (
+      <AppShell
+        user={{ name: profile.fullName, id: session.user.id }}
+        steps={steps}
+      >
+        <div className="rounded-2xl border border-overlay/8 bg-surface px-7 py-10 sm:px-10 sm:py-12">
+          <TeraMark className="size-12" />
+          <h2 className="mt-6 text-xl font-medium tracking-tight text-fg sm:text-2xl">
+            Akses chat kamu udah berakhir
+          </h2>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-fg-muted">
+            Akses chat Tera berlaku {CHAT_ACCESS_DAYS} hari sejak pembayaran
+            sesi terakhir
+            {access.endsAt
+              ? `, dan akses terakhirmu berakhir ${formatDateId(access.endsAt)}`
+              : ""}
+            . Jalankan analisis ulang buat membuka lagi, ya. Obrolan lamamu
+            tetap tersimpan.
+          </p>
+          <Link
+            href="/analisis"
+            className="mt-6 flex h-11 w-fit items-center rounded-full bg-primary px-6 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
+          >
+            Buka halaman analisis
+          </Link>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const [topRecommendation, recentRows] = await Promise.all([
     db
       .select({ majorName: majors.name })
       .from(analysisRecommendations)
@@ -91,7 +130,7 @@ export default async function ChatPage() {
   ];
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell user={{ name: profile.fullName, id: session.user.id }} steps={steps}>
       <ChatPanel initialMessages={initialMessages} suggestions={suggestions} />
     </AppShell>
   );

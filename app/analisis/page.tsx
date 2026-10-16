@@ -15,6 +15,11 @@ import AnalysisPanel, {
 import { DownloadIcon } from "@/components/landing/icons";
 import { prepareAnalysisData } from "@/lib/analysis/prepare";
 import { getJourneySteps, getUserProfile } from "@/lib/onboarding";
+import {
+  expireStaleTransactions,
+  getAvailableCreditId,
+  getPendingPayment,
+} from "@/lib/payment/queries";
 
 export const instant = false;
 
@@ -51,7 +56,9 @@ export default async function AnalysisPage() {
     redirect("/nilai");
   }
 
-  const [steps, data, resultRows] = await Promise.all([
+  await expireStaleTransactions(session.user.id);
+
+  const [steps, data, resultRows, pendingPayment, creditId] = await Promise.all([
     getJourneySteps(session.user.id),
     prepareAnalysisData(session.user.id),
     db
@@ -59,6 +66,8 @@ export default async function AnalysisPage() {
       .from(analysisResults)
       .where(eq(analysisResults.userId, session.user.id))
       .limit(1),
+    getPendingPayment(session.user.id),
+    getAvailableCreditId(session.user.id),
   ]);
 
   let saved: SavedAnalysisView | null = null;
@@ -122,7 +131,7 @@ export default async function AnalysisPage() {
   };
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell user={{ name: profile.fullName, id: session.user.id }} steps={steps}>
       <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Hasil Analisis
       </h1>
@@ -149,6 +158,8 @@ export default async function AnalysisPage() {
           key={saved ? saved.generatedAt : "empty"}
           saved={saved}
           stats={stats}
+          hasCredit={creditId !== null}
+          pending={pendingPayment}
         />
       </div>
     </AppShell>

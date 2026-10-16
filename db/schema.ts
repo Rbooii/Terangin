@@ -32,6 +32,12 @@ export const actionPlanStatus = pgEnum("action_plan_status", [
   "FINALIZED",
 ]);
 
+export const transactionStatus = pgEnum("transaction_status", [
+  "PENDING",
+  "PAID",
+  "EXPIRED",
+]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   fullName: varchar("full_name", { length: 100 }).notNull(),
@@ -183,6 +189,25 @@ export const actionPlans = pgTable("action_plans", {
   roadmapJson: jsonb("roadmap_json"),
   confidenceScore: integer("confidence_score"),
   status: actionPlanStatus("status").notNull().default("DRAFT"),
+});
+
+export const transactions = pgTable("transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  reference: varchar("reference", { length: 30 }).notNull().unique(),
+  description: varchar("description", { length: 100 })
+    .notNull()
+    .default("Sesi analisis jurusan"),
+  amount: integer("amount").notNull(),
+  method: varchar("method", { length: 20 }).notNull().default("QRIS"),
+  status: transactionStatus("status").notNull().default("PENDING"),
+  qrisPayload: text("qris_payload").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  paidAt: timestamp("paid_at"),
+  expiresAt: timestamp("expires_at"),
 });
 
 export type User = typeof users.$inferSelect;

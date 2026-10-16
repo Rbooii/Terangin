@@ -5,7 +5,13 @@ import { auth } from "@/auth";
 import AppShell from "@/components/app/AppShell";
 import DeleteAccountCard from "@/components/account/DeleteAccountCard";
 import ThemeSwitch from "@/components/account/ThemeSwitch";
+import TransactionHistory from "@/components/account/TransactionHistory";
 import { getJourneySteps, getUserProfile } from "@/lib/onboarding";
+import {
+  expireStaleTransactions,
+  getChatAccess,
+  listTransactionViews,
+} from "@/lib/payment/queries";
 
 export const instant = false;
 
@@ -29,10 +35,19 @@ export default async function AccountPage() {
     redirect("/onboarding");
   }
 
-  const steps = await getJourneySteps(session.user.id);
+  await expireStaleTransactions(session.user.id);
+
+  const [steps, transactions, chatAccess] = await Promise.all([
+    getJourneySteps(session.user.id),
+    listTransactionViews(session.user.id),
+    getChatAccess(session.user.id),
+  ]);
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell
+      user={{ name: profile.fullName, id: session.user.id }}
+      steps={steps}
+    >
       <h1 className="text-2xl font-semibold tracking-tight text-fg">Akun</h1>
       <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
         Pengaturan tampilan dan keamanan akunmu. Kamu masuk sebagai{" "}
@@ -48,6 +63,14 @@ export default async function AccountPage() {
         <div className="mt-5">
           <ThemeSwitch />
         </div>
+      </div>
+
+      <div className="mt-5">
+        <TransactionHistory
+          transactions={transactions}
+          chatActive={chatAccess.active}
+          chatEndsAt={chatAccess.endsAt ? chatAccess.endsAt.toISOString() : null}
+        />
       </div>
 
       <div className="mt-5">

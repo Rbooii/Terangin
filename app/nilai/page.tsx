@@ -49,7 +49,7 @@ export default async function GradesPage() {
   ]);
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell user={{ name: profile.fullName, id: session.user.id }} steps={steps}>
       <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Input Nilai
       </h1>

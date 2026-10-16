@@ -74,6 +74,10 @@ export const deleteAccountSchema = z.object({
   confirmation: z.string().min(1, "Ketik HAPUS untuk konfirmasi"),
 });
 
+export const paymentConfirmSchema = z.object({
+  transactionId: z.uuid("Transaksi nggak valid"),
+});
+
 export const profileSchema = z.object({
   fullName: z
     .string()

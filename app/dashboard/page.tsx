@@ -5,7 +5,6 @@ import { connection } from "next/server";
 import { auth } from "@/auth";
 import AppShell from "@/components/app/AppShell";
 import { TeraMark } from "@/components/landing/TeraMark";
-import { SendIcon } from "@/components/landing/icons";
 import { getJourneySteps, getUserProfile } from "@/lib/onboarding";
 
 export const instant = false;
@@ -38,7 +37,7 @@ export default async function DashboardPage() {
   const analysisDone = steps.find((step) => step.n === 4)?.state === "done";
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell user={{ name: profile.fullName, id: session.user.id }} steps={steps}>
       <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Halo, {firstName}
       </h1>
@@ -164,6 +163,12 @@ export default async function DashboardPage() {
             Tera nyocokin minat, bakat, kepribadian, dan nilai rapormu jadi
             rekomendasi jurusan yang masuk akal.
           </p>
+          {!analysisDone && (
+            <p className="mt-2 text-[11px] leading-relaxed text-fg-faint">
+              Sesi analisis Rp 15.000 via QRIS (mode demo), dibayar di halaman
+              analisis.
+            </p>
+          )}
           {gradesDone ? (
             <Link
               href="/analisis"
@@ -186,22 +191,34 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-2">
             <TeraMark className="size-5" />
             <span className="text-[13px] font-medium text-fg-soft">Tera</span>
-            <span className="ml-auto text-[11px] text-fg-faint">
-              Sebentar lagi
-            </span>
+            {analysisDone ? (
+              <span className="ml-auto flex items-center gap-1.5 text-[11px] text-fg-muted">
+                <span className="size-1.5 rounded-full bg-success/80" />
+                Siap
+              </span>
+            ) : (
+              <span className="ml-auto text-[11px] text-fg-faint">
+                Sebentar lagi
+              </span>
+            )}
           </div>
           <p className="mt-4 text-[13px] leading-relaxed text-fg-muted">
-            Chat personal sama Tera nyala setelah analisis kamu selesai.
-            Selesaikan langkah sebelumnya dulu, ya.
+            {analysisDone
+              ? "Chat personal sama Tera udah nyala. Tanya apa aja soal jurusan, kampus, atau prospek karier, dijawab pakai data profilmu."
+              : "Chat personal sama Tera nyala setelah analisis kamu selesai. Selesaikan langkah sebelumnya dulu, ya."}
           </p>
-          <div className="mt-4 flex h-11 items-center gap-2 rounded-full border border-overlay/10 bg-surface-elevated pl-4 pr-1.5 opacity-50">
-            <span className="flex-1 truncate text-[13px] text-fg-faintest">
-              Pesan Tera
+          {analysisDone ? (
+            <Link
+              href="/chat"
+              className="mt-5 flex h-10 w-full items-center justify-center rounded-full bg-primary text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
+            >
+              Ngobrol sama Tera
+            </Link>
+          ) : (
+            <span className="mt-5 flex h-10 w-full cursor-not-allowed items-center justify-center rounded-full border border-overlay/10 text-[13px] text-fg-faint">
+              Selesaikan analisis dulu
             </span>
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-overlay/25 text-primary-fg">
-              <SendIcon className="size-4" />
-            </span>
-          </div>
+          )}
         </div>
       </section>
     </AppShell>

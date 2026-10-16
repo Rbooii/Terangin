@@ -17,7 +17,11 @@ const themeScript = `(function(){try{var stored=localStorage.getItem("terangin-t
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="id" className={`${inter.variable} h-full antialiased`}>
+    <html
+      lang="id"
+      className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <body className="flex min-h-full flex-col font-sans">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         {children}

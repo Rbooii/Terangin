@@ -26,6 +26,7 @@ Aplikasi terdiri dari:
 | 2b | Input Nilai (dinamis per semester + wajib 7 mapel/semester) | ✅ Selesai | E2E penuh + cek DB |
 | 3 | Hasil Analisis (skoring deterministik + narasi AI Groq) | ✅ Selesai | Unit check rumus 7/7 + E2E 10/10 + reproducible 2 run |
 | 4 | Chat Tera (streaming AI + pembatasan scope + protokol curhat) | ✅ Selesai | E2E 12/12 + sanitasi teks + cek DB |
+| 4b | Pembayaran QRIS mockup (kredit 1 run analisis + akses chat 5 hari + riwayat/struk di `/akun`) | ✅ Selesai | E2E 37/37 + cek DB (PENDING/EXPIRED/PAID, `used_at`, 403) |
 | 5 | Action Plan / Rencana Aksi | ❌ **Belum** | Tabel `action_plans` sudah ada |
 | 6 | Hasil Akhir (export/share) | ❌ **Belum** | — |
 
@@ -147,6 +148,14 @@ Sesi ini membangun seluruh aplikasi dari nol (folder awalnya hanya berisi `PRD.m
 - Urutan kerja sesi ini: (1) guard halaman publik → (2) validasi minimal 7 mapel/semester → (3) pembatasan scope chat + protokol curhat → (4) analisis deterministik → (5) dump dokumentasi ini.
 - Migrasi DB sesi ini: `db:push` (kolom baru: `questions.dimension`, `majors.profile`, `analysis_recommendations.factors`) lalu `db:seed` + `db:seed-colleges` lewat jalur non-destruktif (jawaban user lama tidak terhapus).
 
+### 3.15 Pembayaran QRIS mockup + gating analisis & akses chat 5 hari (sesi lanjutan)
+- **Permintaan user:** mockup QRIS; analisis / analisis ulang wajib bayar; tabel transaksi + list transaksi/struk di halaman user; chat tertutup kalau belum bayar; "chat kebuka max 5 hari setelah transaksi terakhir"; "pakai placeholder yang bagus".
+- **Keputusan produk:** harga Rp 15.000 per sesi (konsisten dengan landing/PRD); 1 pembayaran = 1 kali run analisis (analisis ulang butuh bayar lagi); kredit **tidak hangus** kalau proses analisis gagal teknis (dikonsumsi hanya saat persist sukses); QR TTL 15 menit; riwayat + struk cukup lewat card di `/akun` (bukan halaman baru) dan struk bisa dicetak/PDF; akses chat = transaksi PAID terakhir + 5 hari (tanpa transaksi → terkunci, termasuk akun lama).
+- **Implementasi:** enum + tabel `transactions` (migrasi `0002_mixed_chat.sql`; file commit-nya wajib diikutkan); `lib/payment/` (index konstanta+helper murni, `qr-placeholder.ts` pseudo-QR deterministik, `queries.ts` server-only); `lib/actions/payment.ts` (`createQrisTransactionAction`, `confirmPaymentAction`); gate kredit di `runAnalysisAction` (`code: "PAYMENT_REQUIRED"` + konsumsi `used_at` conditional-update di dalam transaksi persist); UI `components/payment/QrisPaymentFlow.tsx` + `QrisPlaceholder.tsx` di `AnalysisPanel` (resume PENDING saat refresh, auto-run setelah "Saya sudah bayar" → verifying → paid); `components/account/TransactionHistory.tsx` di `/akun` (expand struk putih print-safe + tombol cetak; print CSS `body:has(.receipt-print)`); akses chat di `AppShell` (`chatUnlocked`/`expired` → ChatMenuCard/ChatFab), guard `/chat` (locked view + CTA), `POST /api/chat` → 403.
+- **Gotcha baru:** countdown QR dirender `--:--` sampai `setInterval` pertama (callback interval aman dari lint; jangan hitung di initial render → bisa hydration mismatch); pseudo-QR wajib deterministik dari payload (seeded FNV + xorshift, tanpa `Math.random`); print CSS struk memakai `body:has(.receipt-print)` supaya tidak merusak cetak `/cetak/laporan`; `AppShell` sekarang butuh `user.id` (8 halaman app mengirim `id: session.user.id`).
+- **Gotcha timezone (penting):** kolom timestamp memakai `timestamp without time zone`; drizzle/postgres.js membaca nilai naive sebagai **UTC**, sedangkan SQL `now()` menulis wall-time zona lokal (WIB) — selisih 7 jam. Fix: `db/index.ts` sekarang memaksa `connection: { TimeZone: "UTC" }` sehingga `now()` (termasuk `defaultNow()`) menulis UTC wall dan konsisten dengan drizzle (bonus: `created_at` yang sebelumnya tersimpan/terbaca +7 jam kini benar). **Skrip tes yang mengubah timestamp via SQL wajib memakai klien dengan `connection: { TimeZone: "UTC" }` juga**, kalau tidak backdate/`now()` akan meleset 7 jam (sempat bikin false alarm alur expired QRIS). Klien raw tanpa opsi itu juga membaca timestamp sebagai waktu lokal — jangan campur metrik raw vs drizzle untuk membandingkan waktu.
+- **Verifikasi:** lint/build/slop bersih; migrasi `db:migrate` run kedua no-op; E2E Playwright **37/37 PASS** (gate intro, QR + countdown, resume PENDING setelah reload, expired via backdate → "Buat kode baru", bayar → verifying → paid → analisis auto-run + kredit terpakai, chat terbuka, riwayat + badge + struk di `/akun`, analisis ulang minta bayar lagi + Batal kembali, window 5 hari habis → locked view + subteks sidebar + `/api/chat` 403, struk print-safe light/dark).
+
 ---
 
 ## 4. Gotcha & konvensi wajib (JANGAN ulangi kesalahan ini)
@@ -262,8 +271,8 @@ npm run db:seed-colleges   # 12 jurusan + 10 kampus + 34 relasi (idempotent, --f
 | R | 2 | memori | 3 | rasional | 5 | diskusi | 2 |
 
    Plus nilai rapor smt 1: Matematika 92, Informatika 90, Fisika 85, Bahasa Inggris 80, Bahasa Indonesia 78, Biologi 70, Kimia 65. Fixture ini menghasilkan top-5: TI 87, Kedokteran 84, Sistem Informasi 83, Akuntansi 82, Teknik Elektro 81.
-4. Untuk tes chat tanpa menjalankan analisis manual: insert `analysis_results` + `analysis_recommendations` (pakai `major_id` asli dari tabel `majors`) — pola ini dipakai di E2E chat.
-5. Cleanup: `delete from users where email = '<email uji>'` (cascade ke jawaban, nilai, analisis, chat, action plans).
+4. Untuk tes chat tanpa menjalankan analisis manual: insert `analysis_results` + `analysis_recommendations` (pakai `major_id` asli dari tabel `majors`) **DAN satu transaksi PAID segar** (`insert into transactions (user_id, reference, amount, qris_payload, status, paid_at, created_at) values (..., 'TRX-E2ETEST1', 15000, 'mock', 'PAID', now(), now())`) — tanpa transaksi PAID dalam 5 hari, chat terkunci (403) walau analisis ada. Untuk tes alur bayar, biarkan tanpa transaksi → tombol di `/analisis` memunculkan QRIS.
+5. Cleanup: `delete from users where email = '<email uji>'` (cascade ke jawaban, nilai, analisis, chat, transaksi, action plans).
 
 Password akun yang kita buat: `password123`.
 
@@ -312,8 +321,9 @@ git checkout -- package-lock.json   # opsional: buang normalisasi lock dari npm 
 2. **Fase 6: Hasil Akhir** — halaman ringkasan dokumen personal (analisis + dialog + roadmap), tombol unduh (PDF/print) & bagikan ke orang tua/guru BK.
 3. **Chat lanjutan** — multi-sesi (list sesi + judul), pagination riwayat (>50 pesan), mungkin regenerate/retry per pesan.
 4. **Opsional (dari PRD)** — integrasi Tavily untuk data kampus live; faktor ekonomi wilayah; beasiswa terstruktur.
-5. **Opsional teknis** — `not-found.tsx` & `error.tsx` kustom, rate limiting chat/analisis, halaman pengaturan akun, `proxy.ts` (middleware) untuk proteksi route (saat ini guard ada di masing-masing page).
-6. **Deployment** — Vercel: set env Production (`DATABASE_URL` cloud seperti Neon pakai URL direct/unpooled untuk migrasi, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan). Migrasi otomatis via `vercel-build` → cukup baseline prod sekali (`DATABASE_URL=<prod> npm run db:baseline`) lalu push. Cek hasil: `select * from drizzle.__drizzle_migrations`.
+5. **Pembayaran lanjutan (opsional)** — QRIS asli (Midtrans/Xendit) menggantikan mockup: ganti `QrisPlaceholder` dengan QR dari provider, `confirmPaymentAction` dengan webhook, tambah status `REFUNDED` bila perlu; subscription masih ditunda.
+6. **Opsional teknis** — `not-found.tsx` & `error.tsx` kustom, rate limiting chat/analisis, halaman pengaturan akun, `proxy.ts` (middleware) untuk proteksi route (saat ini guard ada di masing-masing page).
+7. **Deployment** — Vercel: set env Production (`DATABASE_URL` cloud seperti Neon pakai URL direct/unpooled untuk migrasi, `AUTH_SECRET`, `GROQ_API_KEY`), `trustHost` sudah aman, `maxDuration` chat = 60s (perhatikan limit plan). Migrasi otomatis via `vercel-build` → cukup baseline prod sekali (`DATABASE_URL=<prod> npm run db:baseline`) lalu push. Cek hasil: `select * from drizzle.__drizzle_migrations`.
 
 ---
 

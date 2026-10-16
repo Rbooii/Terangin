@@ -1,12 +1,16 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { generateText, Output } from "ai";
 import { groq } from "@ai-sdk/groq";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { analysisRecommendations, analysisResults } from "@/db/schema";
+import {
+  analysisRecommendations,
+  analysisResults,
+  transactions,
+} from "@/db/schema";
 import { prepareAnalysisData } from "@/lib/analysis/prepare";
 import { buildSystemPrompt, buildUserPrompt } from "@/lib/analysis/prompt";
 import { buildAnalysisSchema } from "@/lib/analysis/schema";
@@ -17,8 +21,11 @@ import {
   type MajorProfile,
 } from "@/lib/analysis/score";
 import { getUserProfile } from "@/lib/onboarding";
+import { getAvailableCreditId } from "@/lib/payment/queries";
 
-export type RunAnalysisResult = { ok: true } | { ok: false; error: string };
+export type RunAnalysisResult =
+  | { ok: true }
+  | { ok: false; error: string; code?: "PAYMENT_REQUIRED" };
 
 const MIN_SCORABLE_MAJORS = 3;
 const TOP_RECOMMENDATIONS = 5;
@@ -58,6 +65,16 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
     return {
       ok: false,
       error: "Selesaikan onboarding, asesmen, dan input nilai dulu ya.",
+    };
+  }
+
+  const creditId = await getAvailableCreditId(session.user.id);
+  if (!creditId) {
+    return {
+      ok: false,
+      code: "PAYMENT_REQUIRED",
+      error:
+        "Sesi analisis ini berbayar. Selesaikan pembayaran QRIS dulu ya, setelah itu analisis langsung jalan.",
     };
   }
 
@@ -158,28 +175,32 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
   const analysisSummary = rawOutput.analysisSummary.trim();
   const generatedAt = new Date();
 
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(analysisRecommendations)
-      .where(eq(analysisRecommendations.userId, session.user.id));
+  try {
+    await db.transaction(async (tx) => {
+      const consumed = await tx
+        .update(transactions)
+        .set({ usedAt: generatedAt })
+        .where(
+          and(
+            eq(transactions.id, creditId),
+            eq(transactions.status, "PAID"),
+            isNull(transactions.usedAt),
+          ),
+        )
+        .returning({ id: transactions.id });
 
-    await tx
-      .insert(analysisResults)
-      .values({
-        userId: session.user.id,
-        personalityType,
-        analysisSummary,
-        details: {
-          strengths,
-          alignmentNote,
-          weights: FACTOR_WEIGHTS,
-          method: "deterministic-v1",
-        },
-        generatedAt,
-      })
-      .onConflictDoUpdate({
-        target: analysisResults.userId,
-        set: {
+      if (consumed.length === 0) {
+        throw new Error("CREDIT_NOT_AVAILABLE");
+      }
+
+      await tx
+        .delete(analysisRecommendations)
+        .where(eq(analysisRecommendations.userId, session.user.id));
+
+      await tx
+        .insert(analysisResults)
+        .values({
+          userId: session.user.id,
           personalityType,
           analysisSummary,
           details: {
@@ -189,20 +210,49 @@ export async function runAnalysisAction(): Promise<RunAnalysisResult> {
             method: "deterministic-v1",
           },
           generatedAt,
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: analysisResults.userId,
+          set: {
+            personalityType,
+            analysisSummary,
+            details: {
+              strengths,
+              alignmentNote,
+              weights: FACTOR_WEIGHTS,
+              method: "deterministic-v1",
+            },
+            generatedAt,
+          },
+        });
 
-    await tx.insert(analysisRecommendations).values(
-      recommendations.map((item) => ({
-        userId: session.user.id,
-        majorId: item.majorId,
-        matchPercentage: item.matchPercentage.toFixed(2),
-        rankOrder: item.rankOrder,
-        reason: item.reason,
-        factors: item.factors,
-      })),
-    );
-  });
+      await tx.insert(analysisRecommendations).values(
+        recommendations.map((item) => ({
+          userId: session.user.id,
+          majorId: item.majorId,
+          matchPercentage: item.matchPercentage.toFixed(2),
+          rankOrder: item.rankOrder,
+          reason: item.reason,
+          factors: item.factors,
+        })),
+      );
+    });
+  } catch (error) {
+    console.error("[analysis] persist gagal:", error);
+    if (error instanceof Error && error.message === "CREDIT_NOT_AVAILABLE") {
+      return {
+        ok: false,
+        code: "PAYMENT_REQUIRED",
+        error:
+          "Kredit sesi analisis tidak ditemukan. Selesaikan pembayaran baru dulu ya.",
+      };
+    }
+    return {
+      ok: false,
+      error:
+        "Hasil analisis gagal disimpan. Coba lagi sebentar, data kamu tidak hilang.",
+    };
+  }
 
   return { ok: true };
 }

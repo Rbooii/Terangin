@@ -2,24 +2,27 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { logoutAction } from "@/lib/actions/auth";
 import type { JourneyStep } from "@/lib/onboarding";
+import { getChatAccess } from "@/lib/payment/queries";
 import { ArrowRight } from "@/components/landing/icons";
 import { TeraMark } from "@/components/landing/TeraMark";
 import ChatFab from "./ChatFab";
 import ChatMenuCard from "./ChatMenuCard";
 import StepList from "./StepList";
 
-export default function AppShell({
+export default async function AppShell({
   user,
   steps,
   children,
 }: {
-  user: { name: string };
+  user: { name: string; id: string };
   steps: JourneyStep[];
   children: ReactNode;
 }) {
   const initial = (user.name.trim()[0] ?? "T").toUpperCase();
-  const chatUnlocked =
-    steps.find((step) => step.n === 4)?.state === "done";
+  const analysisDone = steps.find((step) => step.n === 4)?.state === "done";
+  const chatAccess = await getChatAccess(user.id);
+  const chatUnlocked = analysisDone && chatAccess.active;
+  const chatExpired = analysisDone && !chatAccess.active;
 
   return (
     <div className="flex min-h-dvh flex-col md:h-dvh md:flex-row md:overflow-hidden">
@@ -37,7 +40,7 @@ export default function AppShell({
         <StepList steps={steps} />
 
         <div className="mt-auto space-y-3 pt-10">
-          <ChatMenuCard unlocked={chatUnlocked} />
+          <ChatMenuCard unlocked={chatUnlocked} expired={chatExpired} />
           <Link
             href="/akun"
             aria-label="Buka pengaturan akun"

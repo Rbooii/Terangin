@@ -14,6 +14,7 @@ import { getUserChatContext } from "@/lib/chat/context";
 import { buildChatSystemPrompt } from "@/lib/chat/prompt";
 import { extractMessageText, rowToUIMessage } from "@/lib/chat/messages";
 import { sanitizeChatText } from "@/lib/chat/text";
+import { getChatAccess } from "@/lib/payment/queries";
 
 export const maxDuration = 60;
 
@@ -25,6 +26,14 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   const userId = session.user.id;
+
+  const access = await getChatAccess(userId);
+  if (!access.active) {
+    return new Response(
+      "Akses chat sudah berakhir. Jalankan analisis ulang dulu ya.",
+      { status: 403 },
+    );
+  }
 
   let incomingMessages: UIMessage[];
   try {

@@ -47,6 +47,8 @@
   --theme-wordmark-from: #ffffff;
   --theme-wordmark-mid: #9a9a9a;
   --theme-wordmark-to: #1f1f1f;
+  --theme-teramark-bg: #ffffff;
+  --theme-teramark-fg: #0a0a0a;
 }
 
 .light {
@@ -75,6 +77,8 @@
   --theme-wordmark-from: #09090b;
   --theme-wordmark-mid: #a1a1aa;
   --theme-wordmark-to: #d4d4d8;
+  --theme-teramark-bg: #0a0a0a;
+  --theme-teramark-fg: #ffffff;
 }
 
 html {
@@ -89,9 +93,12 @@ body {
     color 200ms ease;
 }
 
-.light [data-teramark] > circle {
-  stroke: rgba(0, 0, 0, 0.1);
-  stroke-width: 2;
+[data-teramark] > circle {
+  fill: var(--theme-teramark-bg);
+}
+
+[data-teramark] path {
+  stroke: var(--theme-teramark-fg);
 }
 
 .chat-streaming > :last-child::after {
@@ -140,5 +147,23 @@ body {
   body {
     background: #ffffff !important;
     color: #18181b;
+  }
+
+  body:has(.receipt-print) * {
+    visibility: hidden;
+  }
+
+  body:has(.receipt-print) .receipt-print,
+  body:has(.receipt-print) .receipt-print * {
+    visibility: visible;
+  }
+
+  body:has(.receipt-print) .receipt-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: 0 !important;
+    border-radius: 0 !important;
   }
 }

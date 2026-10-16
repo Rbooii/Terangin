@@ -22,8 +22,8 @@ export default function DeleteAccountCard() {
       <h2 className="text-[15px] font-medium text-fg">Hapus akun</h2>
       <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-fg-muted">
         Menghapus akun berarti seluruh datamu di Terang.in ikut terhapus
-        permanen: profil, jawaban asesmen, nilai rapor, hasil analisis, dan
-        riwayat chat. Tindakan ini tidak bisa dibatalkan.
+        permanen: profil, jawaban asesmen, nilai rapor, hasil analisis, riwayat
+        chat, dan riwayat transaksi. Tindakan ini tidak bisa dibatalkan.
       </p>
 
       {!open ? (

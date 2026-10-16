@@ -76,7 +76,7 @@ PostgreSQL (Drizzle ORM + postgres.js)
 | `/assessment` | ƒ Dynamic | + redirect `/onboarding`; jika sudah selesai tampilkan completed view |
 | `/nilai` | ƒ Dynamic | + redirect `/assessment` |
 | `/analisis` | ƒ Dynamic | + redirect `/nilai` |
-| `/chat` | ƒ Dynamic | + redirect `/analisis` jika belum ada hasil analisis |
+| `/chat` | ƒ Dynamic | + redirect `/analisis` jika belum ada hasil analisis; akses chat wajib transaksi `PAID` dalam 5 hari terakhir (kedaluwarsa → tampilan terkunci + CTA ke `/analisis`) |
 | `/profil` | ƒ Dynamic | + redirect `/onboarding` |
 | `/api/auth/[...nextauth]` | ƒ Dynamic | `export const { GET, POST } = handlers` |
 | `/api/chat` | ƒ Dynamic | POST saja; `export const maxDuration = 60` |
@@ -97,7 +97,7 @@ Tanpa ini, build/runtime melempar `crypto.getRandomValues() while prerendering` 
 
 ### 3.1 Sistem tema (dark/light)
 - Token semantik didefinisikan di `app/globals.css`: variabel `--theme-*` di `:root` (dark) dan `.light`, dipetakan ke Tailwind via `@theme inline` (`bg-surface`, `text-fg-muted`, `border-overlay/10`, dst. — semua nilai runtime, bukan baked).
-- Pilihan user disimpan di localStorage `terangin-theme`; default mengikuti `prefers-color-scheme`. Script inline kecil di root layout (`app/layout.tsx`) menambahkan class `.light` ke `<html>` sebelum paint (anti-FOUC).
+- Pilihan user disimpan di localStorage `terangin-theme`; default mengikuti `prefers-color-scheme`. Script inline kecil di root layout (`app/layout.tsx`) menambahkan class `.light` ke `<html>` sebelum paint (anti-FOUC); `<html>` memakai `suppressHydrationWarning` karena class ini dimutasi sebelum hidrasi (tanpa itu React melaporkan hydration mismatch).
 - `lib/theme.ts`: `setTheme` / `subscribeTheme` / snapshot untuk `useSyncExternalStore`; switch UI di `/akun` (`components/account/ThemeSwitch.tsx`).
 - Aturan: komponen app tidak boleh memakai warna literal (`text-white`, `bg-[#161616]`, zinc-*, `white/alpha`); selalu pakai token. Halaman cetak (`/cetak/laporan`) pengecualian karena selalu light.
 
@@ -144,13 +144,16 @@ Semua `signIn` dipanggil server-side; `NEXT_REDIRECT` di-rethrow, hanya `AuthErr
 
 ### 5.1 Koneksi (`db/index.ts`)
 ```ts
-const client = globalForDb.postgresClient ?? postgres(process.env.DATABASE_URL!, { max: 10 });
+const client = globalForDb.postgresClient ?? postgres(process.env.DATABASE_URL!, {
+  max: 10,
+  connection: { TimeZone: "UTC" },   // WAJIB: jaga konsistensi naive timestamp (lihat §10)
+});
 export const db = drizzle(client, { schema });   // singleton via globalThis di non-production
 ```
 
 ### 5.2 Schema (`db/schema.ts`) — 12 tabel + 4 enum
 
-**Enum:** `assessment_category` (MINAT, BAKAT, KEPRIBADIAN, GAYA_BELAJAR) · `university_type` (PTN, PTS, KEDINASAN, PTLN) · `sender_type` (USER, AI) · `action_plan_status` (DRAFT, FINALIZED).
+**Enum:** `assessment_category` (MINAT, BAKAT, KEPRIBADIAN, GAYA_BELAJAR) · `university_type` (PTN, PTS, KEDINASAN, PTLN) · `sender_type` (USER, AI) · `action_plan_status` (DRAFT, FINALIZED) · `transaction_status` (PENDING, PAID, EXPIRED).
 
 | Tabel | Kolom | Tambahan dari PRD |
 |-------|-------|-------------------|
@@ -166,6 +169,7 @@ export const db = drizzle(client, { schema });   // singleton via globalThis di 
 | `chat_sessions` | id, user_id FK, started_at | — (satu sesi aktif per user) |
 | `chat_messages` | id, session_id FK cascade, sender_type enum, content text, created_at | — |
 | `action_plans` | id, user_id FK **unique**, final_univ_major_id FK university_majors, roadmap_json jsonb, confidence_score int, status enum | **Belum dipakai** (Fase 5) |
+| `transactions` | id, user_id FK cascade, reference varchar(30) unique (`TRX-XXXXXXXX`), description varchar(100) default "Sesi analisis jurusan", amount int (15000), method varchar(20) default "QRIS", status enum, qris_payload text (EMV mock), used_at, created_at, paid_at, expires_at | Pembayaran QRIS mockup: 1 transaksi PAID = 1 kredit run analisis (`used_at` diisi saat analisis sukses dipersist); akses chat = 5 hari sejak `paid_at` terakhir |
 
 **Catatan pembacaan:** kolom `decimal` dikembalikan sebagai **string** oleh driver → selalu `Number(...)` saat menghitung/menampilkan.
 
@@ -229,7 +233,7 @@ terangin/
 ├── components/
 │   ├── landing/                # Komponen landing + primitif bersama
 │   │   ├── TeraMark.tsx        # Avatar (tracking cursor + blink + reduced motion) — dipakai di SELURUH app
-│   │   ├── icons.tsx           # 9 ikon SVG stroke (ArrowRight/Down/Up, ChevronDown, Send, Sparkle, Trash, Check, Copy)
+│   │   ├── icons.tsx           # 10 ikon SVG stroke (ArrowRight/Down/Up, ChevronDown, Send, Sparkle, Trash, Check, Copy, Dashboard)
 │   │   ├── FadeIn.tsx          # Wrapper motion whileInView (landing)
 │   │   ├── Navbar.tsx          # Navbar + dropdown Products + slot authSlot
 │   │   ├── AuthNav.tsx         # Server: auth() → AuthButtons | chip user + Keluar; ada connection()
@@ -241,7 +245,7 @@ terangin/
 │   │   └── CookieBanner.tsx    # Consent localStorage via useSyncExternalStore
 │   ├── app/
 │   │   ├── AppShell.tsx        # Shell: sidebar (logo/StepList/ChatMenuCard/user/Keluar) + mobile header + ChatFab
-│   │   ├── StepList.tsx        # Menu 4 langkah (client, usePathname, locked=non-link, prop `demo` untuk landing, 2 varian responsif)
+│   │   ├── StepList.tsx        # Item Dashboard (Link /dashboard, di luar garis progress) + menu 4 langkah (client, usePathname, locked=non-link, prop `demo` untuk landing, 2 varian responsif)
 │   │   ├── ChatMenuCard.tsx    # Kartu chat di sidebar (locked/unlocked/active)
 │   │   └── ChatFab.tsx         # FAB mobile (spring, hidden di /chat & saat locked)
 │   ├── auth/LoginForm.tsx · SignupForm.tsx      # Client useActionState; SignupForm export inputClass
@@ -254,6 +258,9 @@ terangin/
 │   ├── profile/ProfileForm.tsx                  # Edit profil + chips minat
 │   ├── account/ThemeSwitch.tsx                  # Segmented Gelap/Terang (useSyncExternalStore + layoutId pill)
 │   ├── account/DeleteAccountCard.tsx            # Zona bahaya: password + ketik HAPUS → deleteAccountAction
+│   ├── account/TransactionHistory.tsx           # Kartu Transaksi /akun: list + expand struk + cetak (lihat §7.6)
+│   ├── payment/QrisPlaceholder.tsx              # Pseudo-QR SVG deterministik dari payload (placeholder QRIS)
+│   ├── payment/QrisPaymentFlow.tsx              # Alur bayar QRIS mockup: preparing/qr/verifying/paid + countdown (lihat §7.6)
 │   └── cetak/PrintToolbar.tsx                   # Toolbar cetak laporan (Kembali ke /analisis + Cetak/Simpan PDF, print:hidden)
 ├── lib/
 │   ├── validation.ts           # Semua schema zod (lihat §7.5) + deleteAccountSchema
@@ -266,7 +273,8 @@ terangin/
 │   │   ├── assessment.ts       # saveAnswerAction, skipQuestionAction, completeAssessmentAction, restartAssessmentAction
 │   │   ├── grades.ts           # saveGradeAction, deleteGradeAction, completeGradesAction
 │   │   ├── profile.ts          # updateProfileAction, restartTourAction
-│   │   └── analysis.ts         # runAnalysisAction (skoring deterministik → narasi AI → persist transaksional)
+│   │   ├── payment.ts          # createQrisTransactionAction, confirmPaymentAction (lihat §9.3)
+│   │   └── analysis.ts         # runAnalysisAction (cek kredit sesi → skoring deterministik → narasi AI → persist transaksional + konsumsi kredit)
 │   ├── assessment/
 │   │   └── summary.ts          # DIMENSION_LABELS/CATEGORY_LABELS + computeDimensionScores + getAssessmentSummary (dokumen cetak)
 │   ├── analysis/
@@ -274,11 +282,15 @@ terangin/
 │   │   ├── prompt.ts           # buildSystemPrompt(), buildUserPrompt(data, ranked): prompt narasi
 │   │   ├── score.ts            # scoreMajors + FACTOR_WEIGHTS: skoring deterministik (lihat §9.1)
 │   │   └── schema.ts           # buildAnalysisSchema(top5Ids) → zod Output.object (narasi + reason per jurusan)
-│   └── chat/
-│       ├── context.ts          # getUserChatContext(userId): konteks personal + katalog kampus (satu kampus per baris)
-│       ├── prompt.ts           # buildChatSystemPrompt(context): 5 blok (cakupan, curhat, pegangan cerita, data, gaya)
-│       ├── messages.ts         # rowToUIMessage(row), extractMessageText(uiMessage)
-│       └── text.ts             # sanitizeChatText: karakter tipografis non-ASCII jadi padanan standar
+│   ├── chat/
+│   │   ├── context.ts          # getUserChatContext(userId): konteks personal + katalog kampus (satu kampus per baris)
+│   │   ├── prompt.ts           # buildChatSystemPrompt(context): 5 blok (cakupan, curhat, pegangan cerita, data, gaya)
+│   │   ├── messages.ts         # rowToUIMessage(row), extractMessageText(uiMessage)
+│   │   └── text.ts             # sanitizeChatText: karakter tipografis non-ASCII jadi padanan standar
+│   └── payment/
+│       ├── index.ts            # PRICE_IDR, QR_TTL_MINUTES, CHAT_ACCESS_DAYS, formatRupiah/Countdown/Date, makeReference, buildQrisPayload, tipe view
+│       ├── qr-placeholder.ts   # qrModules(payload): matriks pseudo-QR deterministik (seed FNV + xorshift, finder/timing/alignment)
+│       └── queries.ts          # server-only: expireStaleTransactions, getPendingPayment, getAvailableCreditId, listTransactionViews, getChatAccess
 ├── db/
 │   ├── schema.ts · index.ts · seed.ts · seed-colleges.ts
 │   └── migrations/             # SQL migrasi versioned + meta/_journal.json (di-commit)
@@ -340,8 +352,9 @@ Props: `saved: SavedAnalysisView | null`, `stats: AnalysisStats`. State: `mode` 
 | `restartTourAction` | profile | — | reset `onboarding_completed_at` → redirect `/onboarding` |
 | `resetChatAction` | chat | — | hapus semua `chat_sessions` user (cascade ke `chat_messages`) → `{ok}` / `{ok:false,error}` |
 | `deleteAccountAction` | account | FormData (password, confirmation) | verifikasi password (bcrypt) + konfirmasi `HAPUS` → delete user (cascade semua data) → signOut `/`; `{error}` bila gagal |
-| `runAnalysisAction` | analysis | — | pipeline AI + persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
-| `runAnalysisAction` | analysis | — | skoring deterministik (bobot 30/25/20/15/10) → narasi AI → persist → `{ok}` / `{ok:false,error}` (lihat §9.1) |
+| `createQrisTransactionAction` | payment | — | housekeeping expiry → pakai ulang PENDING aktif bila ada, atau insert transaksi PENDING baru (ref + payload QRIS + `expires_at` 15 menit) → `{ok, transaction}` / `{ok:false,error}` |
+| `confirmPaymentAction` | payment | `transactionId` uuid | owner check; PENDING & belum expiry → `PAID` + `paid_at`; sudah PAID → idempoten `{ok}`; expired → tandai `EXPIRED` + error ramah (lihat §9.3) |
+| `runAnalysisAction` | analysis | — | cek kredit sesi (transaksi PAID & `used_at` kosong; tidak ada → `{ok:false, code:"PAYMENT_REQUIRED"}`) → skoring deterministik (bobot 30/25/20/15/10) → narasi AI → persist transaksional + konsumsi kredit (`used_at`, hanya saat sukses) → `{ok}` / `{ok:false,error}` (lihat §9.1) |
 
 Konvensi: semua diawali `"use server"`, guard `auth()` + `redirect("/login")`, validasi zod, error ramah berbahasa Indonesia.
 
@@ -351,7 +364,7 @@ Konvensi: semua diawali `"use server"`, guard `auth()` + `redirect("/login")`, v
 
 ### 9.1 Analisis (Fase 3) — `lib/actions/analysis.ts` + `lib/analysis/*`
 Alur (skor dihitung kode, LLM hanya menarasikan):
-1. Guard: session → profile → ketiga flag completed → `GROQ_API_KEY` ada → `prepareAnalysisData` → bank jurusan ≥ 3.
+1. Guard: session → profile → ketiga flag completed → **kredit sesi** (`transactions` PAID & `used_at = null`; tidak ada → return `code: "PAYMENT_REQUIRED"` tanpa memanggil AI) → `GROQ_API_KEY` ada → `prepareAnalysisData` → bank jurusan ≥ 3.
 2. `prepareAnalysisData(userId)` menghasilkan: profil, agregat asesmen (rata-rata per kategori, `dimensionScores` 0-100 per tag dimensi, top 4 & low 3 jawaban dengan teks soal), nilai (rata-rata per mapel + jumlah semester), daftar jurusan + `profile` (bobot skoring), dan `campusesByMajor: Map<majorId, CampusInfo[]>`.
 3. `scoreMajors` (`lib/analysis/score.ts`) menghitung skor semua jurusan dengan bobot tetap: Minat 30% (fit RIASEC), Bakat 25% (fit aptitude), Nilai rapor 20% (mapel pendukung), Kepribadian 15%, Gaya belajar 10%. Sub-skor faktor 0-100, dinormalisasi terhadap dimensi/mapel yang ada datanya; total = rata-rata berbobot faktor tersedia (minimal 2 faktor); `match = clamp(40..97, 40 + 0.57 x total)`; ambil top 5 (kalau jurusan layak-skor < 3 → error ramah).
 4. `generateText` (narasi saja; skema tidak lagi memuat match%/urutan):
@@ -373,7 +386,7 @@ const result = await generateText({
 
 ### 9.2 Chat (Fase 4) — `app/api/chat/route.ts` + `lib/chat/*`
 Alur POST:
-1. `auth()` → 401; parse `{ messages: UIMessage[] }`; ambil pesan user terakhir → teks (cap 2000 char).
+1. `auth()` → 401; **gate akses** `getChatAccess(userId)` (transaksi PAID terakhir < 5 hari; tidak aktif → 403) ; parse `{ messages: UIMessage[] }`; ambil pesan user terakhir → teks (cap 2000 char).
 2. Cari/buat `chat_sessions` (satu per user) → insert pesan USER ke `chat_messages`.
 3. Ambil 60 pesan terakhir (desc lalu di-sort asc) → map `rowToUIMessage` → history.
 4. `getUserChatContext(userId)` (prepare + analysis + rekomendasi + katalog kampus, satu kampus per baris) → `buildChatSystemPrompt` (5 blok: PERAN DAN CAKUPAN dengan daftar out-of-scope + formula penolakan, CARA MENANGGAPI CURHAT termasuk batas krisis, PEGANGAN SAAT USER BERCERITA, SUMBER DATA dengan aturan salin angka persis, GAYA BAHASA tanpa emoji/karakter non-standar).
@@ -385,6 +398,15 @@ Alur POST:
 
 **Batasan Groq yang penting:** Structured Outputs (strict) **tidak mendukung streaming** → analisis non-streaming dengan progress UI; chat teks biasa streaming normal.
 
+### 9.3 Pembayaran QRIS mockup (Fase 3, gerbang analisis & chat) — `lib/payment/*` + `lib/actions/payment.ts`
+- Konstanta (`lib/payment/index.ts`): `PRICE_IDR = 15_000`, `QR_TTL_MINUTES = 15`, `CHAT_ACCESS_DAYS = 5`; helper murni `formatRupiah`, `formatCountdown`, `formatDateTimeId/formatDateId`, `makeReference` (`TRX-` + 8 char alphabet tanpa ambigu via WebCrypto), `buildQrisPayload` (string EMV-style mock deterministik dari ref).
+- QR placeholder (`lib/payment/qr-placeholder.ts` + `components/payment/QrisPlaceholder.tsx`): matriks 29×29 deterministik (seed FNV-1a dari payload + xorshift32; finder 7×7 di 3 sudut + timing row/col 6 + alignment 5×5) dirender sebagai satu `<path>` SVG `crispEdges` — identik di server & client (aman hydration), murni dekoratif (tidak scannable).
+- Siklus hidup: `createQrisTransactionAction` (housekeeping `EXPIRED` → reuse PENDING aktif → insert baru dengan `expires_at` sekarang + 15 menit) → pengguna menekan "Saya sudah bayar" di `QrisPaymentFlow` (jeda verifikasi ±1,2 dtk) → `confirmPaymentAction` (owner check, PENDING, belum expiry → `PAID` + `paid_at`; expired → `EXPIRED` + error "Buat kode baru") → komponen memanggil `onPaid` → `runAnalysisAction` otomatis.
+- Konsumsi kredit: `runAnalysisAction` menuntut satu transaksi `PAID` dengan `used_at IS NULL`; konsumsi (`used_at = generatedAt`) dilakukan **di dalam transaksi DB yang sama dengan persist hasil** (`UPDATE ... WHERE id = ? AND status = 'PAID' AND used_at IS NULL RETURNING`, 0 baris → throw → rollback + `PAYMENT_REQUIRED`). Gagal di tengah (Groq error, dll) sebelum persist → kredit utuh, aman di-retry tanpa bayar ulang.
+- Akses chat: `getChatAccess(userId)` = `paid_at` transaksi PAID terakhir + 5 hari (tanpa transaksi → tidak aktif). Dipakai AppShell (ChatMenuCard `unlocked`/`expired`, ChatFab), guard `/chat` (tampilan terkunci, bukan redirect), dan `POST /api/chat` (403). Hasil analisis lama dari sebelum fitur tetap ada, tapi akses chat tetap mengikuti aturan 5 hari ini.
+- Housekeeping lazily: `expireStaleTransactions(userId)` dipanggil di awal `/analisis` dan `/akun` (PENDING lewat `expires_at` → `EXPIRED`).
+- Riwayat/struk: `/akun` (`components/account/TransactionHistory.tsx`) memuat 20 transaksi terbaru (`listTransactionViews`); expand struk putih print-safe + tombol cetak (`window.print()`), print CSS `body:has(.receipt-print)` menyembunyikan seluruh body kecuali struk yang terbuka.
+
 ---
 
 ## 10. Konvensi & gotcha teknis (ringkas; detail di `continue.md` §4)
@@ -395,7 +417,7 @@ Alur POST:
 4. Anti AI-slop di semua copy + prompt AI (grep audit tersedia). Output chat tambahan disanitasi `sanitizeChatText` di `onFinish` + saat render.
 5. Groq: strict schema = semua field required; structured output tanpa streaming; `reasoningEffort` chat `high` (akurasi angka katalog), analisis `medium`.
 6. `trustHost: true` wajib di auth.ts.
-7. Upsert Drizzle butuh unique constraint; decimal = string dari driver.
+7. Upsert Drizzle butuh unique constraint; decimal = string dari driver. Kolom `timestamp` tanpa timezone: postgres.js/drizzle membaca naive sebagai UTC, jadi klien **wajib** memakai `connection: { TimeZone: "UTC" }` (`db/index.ts`) — tanpa itu `now()`/`defaultNow()` menulis wall-time lokal dan selisih jam (detail di `continue.md` §4.6).
 8. Seeder idempotent (skip kalau terisi; `--force` untuk ulang).
 9. Playwright di-install sementara saat verifikasi lalu di-uninstall.
 10. Migrasi versioned: hasil `db:generate` wajib di-commit; file migrasi yang sudah teraplikasi jangan diedit (penanda hash); DB lama cukup di-baseline sekali.

@@ -32,7 +32,7 @@ export default async function ProfilePage() {
   const steps = await getJourneySteps(session.user.id);
 
   return (
-    <AppShell user={{ name: profile.fullName }} steps={steps}>
+    <AppShell user={{ name: profile.fullName, id: session.user.id }} steps={steps}>
       <h1 className="text-2xl font-semibold tracking-tight text-fg">
         Profil
       </h1>

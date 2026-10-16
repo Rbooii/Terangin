@@ -12,7 +12,13 @@ function ChatTile() {
   );
 }
 
-export default function ChatMenuCard({ unlocked }: { unlocked: boolean }) {
+export default function ChatMenuCard({
+  unlocked,
+  expired = false,
+}: {
+  unlocked: boolean;
+  expired?: boolean;
+}) {
   const pathname = usePathname();
   const active = pathname.startsWith("/chat");
 
@@ -28,7 +34,9 @@ export default function ChatMenuCard({ unlocked }: { unlocked: boolean }) {
             Chat sama Tera
           </span>
           <span className="block truncate text-[11px] text-fg-faint">
-            Terbuka setelah analisis selesai
+            {expired
+              ? "Akses berakhir, analisis lagi"
+              : "Terbuka setelah analisis selesai"}
           </span>
         </span>
       </div>

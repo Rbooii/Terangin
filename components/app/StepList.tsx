@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
+import { DashboardIcon } from "@/components/landing/icons";
 import type { JourneyStep } from "@/lib/onboarding";
 
 const STEP_HREFS: Record<number, string | undefined> = {
@@ -14,6 +15,10 @@ const STEP_HREFS: Record<number, string | undefined> = {
 };
 
 const EASE: [number, number, number, number] = [0.21, 0.47, 0.32, 0.98];
+
+const ACTIVE_WRAP = "relative grid place-items-center rounded-[9px] p-[2px]";
+const INACTIVE_CHIP =
+  "grid size-6 shrink-0 place-items-center rounded-md bg-surface text-[11px] text-fg-muted";
 
 function sweepBackground(peak: number, arc: number) {
   const start = 360 - arc;
@@ -94,6 +99,45 @@ function StepContent({ step, active }: { step: JourneyStep; active: boolean }) {
   );
 }
 
+function DashboardContent({
+  active,
+  status,
+  done,
+}: {
+  active: boolean;
+  status: string;
+  done: boolean;
+}) {
+  return (
+    <>
+      <span
+        className={
+          active
+            ? "relative grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-fg"
+            : "relative grid size-9 shrink-0 place-items-center rounded-lg bg-surface text-fg-muted"
+        }
+      >
+        <DashboardIcon className="size-4" />
+      </span>
+      <span className="relative min-w-0">
+        <span className="block truncate text-[13px] text-fg-soft">
+          Dashboard
+        </span>
+        <span
+          className={
+            done
+              ? "flex items-center gap-1.5 text-[11px] text-fg-muted"
+              : "block text-[11px] text-fg-faint"
+          }
+        >
+          {done && <span className="size-1.5 rounded-full bg-success/80" />}
+          {status}
+        </span>
+      </span>
+    </>
+  );
+}
+
 export default function StepList({
   steps,
   demo = false,
@@ -125,6 +169,15 @@ export default function StepList({
   const journeyActive = steps.find((step) => step.state === "active");
   const activeNumber = routeActive?.n ?? journeyActive?.n;
 
+  const dashboardActive = pathname.startsWith("/dashboard");
+  const allStepsDone = journeyActive === undefined;
+  const dashboardStatus = allStepsDone
+    ? "Semua langkah selesai"
+    : `Langkah ${journeyActive.n} dari ${steps.length}`;
+  const dashboardRowClass = dashboardActive
+    ? "relative flex items-center gap-4 rounded-xl bg-surface-elevated px-3.5 py-3 shadow-[0_0_0_1px_rgb(var(--theme-overlay-rgb)/0.12)]"
+    : "relative flex items-center gap-4 rounded-xl px-3.5 py-3 transition-colors hover:bg-overlay/4";
+
   const activeIndex = activeNumber
     ? steps.findIndex((step) => step.n === activeNumber)
     : -1;
@@ -138,6 +191,23 @@ export default function StepList({
       : null;
   const knobTop = hasActive && stride !== null ? progressIndex * stride : null;
 
+  const dashboardChip = dashboardActive ? (
+    <>
+      <SweepOutline
+        reduceMotion={reduceMotion}
+        peak={0.7}
+        arc={22}
+        duration={5.5}
+        coverClassName="inset-[2px] rounded-[7px] bg-bg"
+      />
+      <span className="relative grid size-6 place-items-center rounded-md bg-primary text-primary-fg">
+        <DashboardIcon className="size-3.5" />
+      </span>
+    </>
+  ) : (
+    <DashboardIcon className="size-3.5" />
+  );
+
   return (
     <>
       <nav
@@ -146,77 +216,110 @@ export default function StepList({
         aria-hidden={demo || undefined}
         className="relative mt-8 hidden flex-col gap-1 md:flex"
       >
-        <span
-          data-track
-          aria-hidden="true"
-          className="absolute bottom-[30px] left-8 top-[30px] w-px"
-        >
-          <span className="absolute inset-0 bg-overlay/8" />
-          <motion.span
-            className="absolute left-0 top-0 w-px bg-gradient-to-b from-overlay/12 via-overlay/35 to-overlay/70"
-            initial={reduceMotion ? false : { height: "0%" }}
-            animate={{ height: `${progressPct}%` }}
-            transition={{ duration: reduceMotion ? 0 : 0.55, ease: EASE }}
-          />
-        </span>
-        {steps.map((step) => {
-          const href = STEP_HREFS[step.n];
-          const unlocked =
-            href !== undefined &&
-            (step.state === "done" || step.state === "active");
-          const isActive = step.n === activeNumber;
-
-          const rowClass = isActive
-            ? "relative flex items-center gap-4 rounded-xl bg-surface-elevated px-3.5 py-3 shadow-[0_0_0_1px_rgb(var(--theme-overlay-rgb)/0.12)]"
-            : unlocked
-              ? "relative flex items-center gap-4 rounded-xl px-3.5 py-3 transition-colors hover:bg-overlay/4"
-              : "relative flex cursor-not-allowed items-center gap-4 px-3.5 py-3 opacity-60";
-
-          const sweep = isActive ? (
-            <SweepOutline
-              reduceMotion={reduceMotion}
-              peak={0.85}
-              arc={66}
-              duration={4.5}
-              coverClassName="inset-px rounded-[11px] bg-surface-elevated"
+        {demo ? (
+          <span className={dashboardRowClass}>
+            <DashboardContent
+              active={false}
+              status={dashboardStatus}
+              done={allStepsDone}
             />
-          ) : null;
+          </span>
+        ) : (
+          <Link
+            href="/dashboard"
+            aria-current={dashboardActive ? "page" : undefined}
+            className={dashboardRowClass}
+          >
+            {dashboardActive && (
+              <SweepOutline
+                reduceMotion={reduceMotion}
+                peak={0.85}
+                arc={66}
+                duration={4.5}
+                coverClassName="inset-px rounded-[11px] bg-surface-elevated"
+              />
+            )}
+            <DashboardContent
+              active={dashboardActive}
+              status={dashboardStatus}
+              done={allStepsDone}
+            />
+          </Link>
+        )}
 
-          if (unlocked && href && !demo) {
+        <div className="relative flex flex-col gap-1">
+          <span
+            data-track
+            aria-hidden="true"
+            className="absolute bottom-[30px] left-8 top-[30px] w-px"
+          >
+            <span className="absolute inset-0 bg-overlay/8" />
+            <motion.span
+              className="absolute left-0 top-0 w-px bg-gradient-to-b from-overlay/12 via-overlay/35 to-overlay/70"
+              initial={reduceMotion ? false : { height: "0%" }}
+              animate={{ height: `${progressPct}%` }}
+              transition={{ duration: reduceMotion ? 0 : 0.55, ease: EASE }}
+            />
+          </span>
+          {steps.map((step) => {
+            const href = STEP_HREFS[step.n];
+            const unlocked =
+              href !== undefined &&
+              (step.state === "done" || step.state === "active");
+            const isActive = step.n === activeNumber;
+
+            const rowClass = isActive
+              ? "relative flex items-center gap-4 rounded-xl bg-surface-elevated px-3.5 py-3 shadow-[0_0_0_1px_rgb(var(--theme-overlay-rgb)/0.12)]"
+              : unlocked
+                ? "relative flex items-center gap-4 rounded-xl px-3.5 py-3 transition-colors hover:bg-overlay/4"
+                : "relative flex cursor-not-allowed items-center gap-4 px-3.5 py-3 opacity-60";
+
+            const sweep = isActive ? (
+              <SweepOutline
+                reduceMotion={reduceMotion}
+                peak={0.85}
+                arc={66}
+                duration={4.5}
+                coverClassName="inset-px rounded-[11px] bg-surface-elevated"
+              />
+            ) : null;
+
+            if (unlocked && href && !demo) {
+              return (
+                <Link
+                  key={step.n}
+                  href={href}
+                  aria-current={routeActive?.n === step.n ? "page" : undefined}
+                  className={rowClass}
+                >
+                  {sweep}
+                  <StepContent step={step} active={isActive} />
+                </Link>
+              );
+            }
+
             return (
-              <Link
+              <span
                 key={step.n}
-                href={href}
-                aria-current={routeActive?.n === step.n ? "page" : undefined}
+                aria-disabled={demo ? undefined : "true"}
                 className={rowClass}
               >
                 {sweep}
                 <StepContent step={step} active={isActive} />
-              </Link>
+              </span>
             );
-          }
-
-          return (
-            <span
-              key={step.n}
-              aria-disabled={demo ? undefined : "true"}
-              className={rowClass}
-            >
-              {sweep}
-              <StepContent step={step} active={isActive} />
-            </span>
-          );
-        })}
-        {knobTop !== null && (
-          <motion.span
-            aria-hidden="true"
-            className="pointer-events-none absolute left-8 z-10 size-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--theme-knob-glow)]"
-            style={{ x: "-50%", y: "-50%" }}
-            initial={reduceMotion ? false : { opacity: 0, scale: 0.5 }}
-            animate={{ top: knobTop, opacity: 1, scale: 1 }}
-            transition={{ duration: reduceMotion ? 0 : 0.55, ease: EASE }}
-          />
-        )}
+          })}
+          {knobTop !== null && (
+            <motion.span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-8 z-10 size-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--theme-knob-glow)]"
+              style={{ x: "-50%", y: "-50%" }}
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.5 }}
+              animate={{ top: knobTop, opacity: 1, scale: 1 }}
+              transition={{ duration: reduceMotion ? 0 : 0.55, ease: EASE }}
+            />
+          )}
+        </div>
       </nav>
 
       <nav
@@ -224,17 +327,29 @@ export default function StepList({
         aria-hidden={demo || undefined}
         className="mt-4 flex items-center gap-1.5 md:hidden"
       >
+        <span className="flex flex-1 items-center gap-1.5">
+          {demo ? (
+            <span className={dashboardActive ? ACTIVE_WRAP : INACTIVE_CHIP}>
+              {dashboardChip}
+            </span>
+          ) : (
+            <Link
+              href="/dashboard"
+              aria-current={dashboardActive ? "page" : undefined}
+              aria-label="Dashboard"
+              className={dashboardActive ? ACTIVE_WRAP : INACTIVE_CHIP}
+            >
+              {dashboardChip}
+            </Link>
+          )}
+          <span aria-hidden="true" className="min-w-2 flex-1" />
+        </span>
         {steps.map((step, i) => {
           const href = STEP_HREFS[step.n];
           const unlocked =
             href !== undefined &&
             (step.state === "done" || step.state === "active");
           const isActive = step.n === activeNumber;
-
-          const activeWrap =
-            "relative grid place-items-center rounded-[9px] p-[2px]";
-          const inactiveChip =
-            "grid size-6 shrink-0 place-items-center rounded-md bg-surface text-[11px] text-fg-muted";
 
           const chip = isActive ? (
             <>
@@ -260,7 +375,7 @@ export default function StepList({
                   href={href}
                   aria-current={routeActive?.n === step.n ? "page" : undefined}
                   aria-label={step.title}
-                  className={isActive ? activeWrap : inactiveChip}
+                  className={isActive ? ACTIVE_WRAP : INACTIVE_CHIP}
                 >
                   {chip}
                 </Link>
@@ -270,10 +385,10 @@ export default function StepList({
                   aria-label={demo ? undefined : step.title}
                   className={
                     isActive
-                      ? activeWrap
+                      ? ACTIVE_WRAP
                       : unlocked
-                        ? inactiveChip
-                        : `${inactiveChip} opacity-60`
+                        ? INACTIVE_CHIP
+                        : `${INACTIVE_CHIP} opacity-60`
                   }
                 >
                   {chip}
