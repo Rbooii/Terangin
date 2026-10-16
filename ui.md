@@ -251,6 +251,17 @@ Komponen: `components/landing/TeraMark.tsx` (client). Spesifikasi:
 - **Print CSS** (globals.css): `@page { size: A4; margin: 16mm }`, body dipaksa putih, `:root { color-scheme: light }`; class `.print-exact` (`print-color-adjust: exact`) dipasang di root dokumen agar bar/background tercetak.
 - Copy dokumen fixed, profesional, **tanpa emoji/em dash/panah teks**; skala dimensi 0-100, match pakai persen.
 
+### 6.12 Deck pitch `/pitch` (standalone)
+- Halaman deck 12 slide **16:9** (13,333in × 7,5in) untuk presentasi hackathon; **selalu gelap** (warna literal `#050505`/`#161616`/`#111111`, pengecualian token seperti §6.11 yang selalu terang), publik + `noindex`, tanpa AppShell.
+- Tipografi besar ala editorial: judul slide 44-64px `tracking-tight`, sub 20px, bullet 19-21px, judul kartu 18px, deskripsi 15px, band catatan 16px, angka statistik 88px; hierarki lewat ukuran dan opasitas, tanpa glow/gradien dekoratif.
+- Slide sparse (Mengapa Salah Jurusan, Dampak Sosial, Model Bisnis) memakai **baris besar bernomor** (`01/02/03` `tabular-nums` + hairline `border-white/8`) yang mengisi kanvas; slide fitur/tech/keunggulan memakai grid kartu penuh tinggi dengan konten center.
+- **Screenshot asli app** di slide Tampilan Antarmuka (dashboard desktop + chat mobile) dan Demo Produk (hasil analisis), diimpor statis dari `app/pitch/*.png`, dibungkus frame minimal `rounded-xl border-white/10` + shadow tipis. Tidak ada mock ber-avatar.
+- TeraMark hanya sebagai **mikrologo** di lockup cover dan footer slide (override `--theme-teramark-*` di `.pitch-slide` menjaga versi gelap di tema terang); cover memakai wordmark "TERANG.IN" raksasa opasitas 4% sebagai tekstur, bukan avatar.
+- Print CSS: `@page pitch-deck { size: 13.333in 7.5in; margin: 0 }` (named page, halaman cetak lain tetap A4); `body:has(.pitch-slide)` memaksa bg gelap saat print; tiap `.pitch-slide` dipaksa 1280×720px + `break-after: page`.
+- Toolbar layar `PitchToolbar` (`print:hidden`): "Kembali" ke `/` + "Cetak / Simpan PDF".
+- Artefak: `pitch-terangin.pdf` di root repo (12 halaman, 960×540pt, via `page.pdf` 1280×720 px `printBackground`).
+- Cover menampilkan "Tiga Trio Bertiga Ngawi East Timur"; bullet slide Tampilan Antarmuka berbunyi "Dashboard gelap minimalis yang fokus."
+
 ---
 
 ## 7. Pola interaksi & animasi

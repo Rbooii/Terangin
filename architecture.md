@@ -80,6 +80,7 @@ PostgreSQL (Drizzle ORM + postgres.js)
 | `/profil` | ƒ Dynamic | + redirect `/onboarding` |
 | `/api/auth/[...nextauth]` | ƒ Dynamic | `export const { GET, POST } = handlers` |
 | `/api/chat` | ƒ Dynamic | POST saja; `export const maxDuration = 60` |
+| `/pitch` | ○ Static | Deck pitch 12 slide 16:9 (standalone, publik untuk juri, `robots` noindex, tanpa auth) |
 
 **Pola wajib halaman ber-session** (akibat `cacheComponents`):
 ```tsx
@@ -218,6 +219,7 @@ terangin/
 │   ├── page.tsx                # Landing: komposisi 8 komponen + Suspense AuthNav
 │   ├── signup/page.tsx         # Stub form signup (client form + server action)
 │   ├── cetak/laporan/page.tsx  # Laporan lengkap A/B/C (asesmen + nilai + analisis), light, A4 print, tanpa AppShell
+│   ├── pitch/page.tsx          # Deck pitch 12 slide 16:9 (standalone, selalu gelap literal, print @page pitch-deck, noindex)
 │   ├── akun/page.tsx           # Pengaturan akun: Tampilan (tema) + Zona bahaya (hapus akun)
 │   ├── login/page.tsx          # Stub form login
 │   ├── onboarding/page.tsx     # Guard chain awal; render BasicsForm | TourSlides
@@ -261,6 +263,7 @@ terangin/
 │   ├── account/TransactionHistory.tsx           # Kartu Transaksi /akun: list + expand struk + cetak (lihat §7.6)
 │   ├── payment/QrisPlaceholder.tsx              # Pseudo-QR SVG deterministik dari payload (placeholder QRIS)
 │   ├── payment/QrisPaymentFlow.tsx              # Alur bayar QRIS mockup: preparing/qr/verifying/paid + countdown (lihat §7.6)
+│   ├── pitch/PitchToolbar.tsx                   # Toolbar deck pitch (Kembali + Cetak/Simpan PDF, print:hidden)
 │   └── cetak/PrintToolbar.tsx                   # Toolbar cetak laporan (Kembali ke /analisis + Cetak/Simpan PDF, print:hidden)
 ├── lib/
 │   ├── validation.ts           # Semua schema zod (lihat §7.5) + deleteAccountSchema
